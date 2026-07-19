@@ -1,0 +1,11 @@
+services:
+  - type: web
+    name: vc-brain
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn app:app
+    envVars:
+      - key: FLASK_DEBUG
+        value: "false"
+      - key: FLASK_PORT
+        value: "5000"
