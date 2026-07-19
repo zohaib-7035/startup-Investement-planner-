@@ -1,138 +1,154 @@
 # VC Brain — Agentic Founder Intelligence
-
-**An offline-safe, multi-agent pipeline that sources, screens, and generates evidence-backed investment memos for startup founders — with full agentic traceability showing exactly which data point drove each conclusion.**
-
----
-
-## What VC Brain Does (and Does NOT Do)
-
-**Does:**
-- Source founders via inbound applications or outbound GitHub scans, unified in one UI
-- Score founders on three independent axes (Founder / Market / Idea-vs-Market) — axes are **never combined into a single score**
-- Generate investment memos where every claim is tagged as `verified`, `unverifiable`, or `contradicted` against real signals
-- Flag "not disclosed" sections explicitly rather than fabricating content
-- Produce a chain-of-thought reasoning log: each conclusion cites the exact data point that drove it
-- Run fully offline against synthetic demo profiles; Ollama only needed for claim extraction
-
-**Does NOT:**
-- Make final investment decisions — the human investor is always in the loop
-- Replace legal, financial, or technical due diligence
-- Guarantee accuracy of third-party data sources (GitHub signals are heuristic proxies)
-- Store or transmit any founder data externally
+> **An offline-safe, multi-agent AI operating system that sources, screens, and generates evidence-backed investment memos for startup founders — featuring full agentic traceability.**
 
 ---
 
-## Architecture
+## 🌟 Vision & Why It Matters
+In traditional venture capital, **capital flows to who you know, not what you are building**. Founders stay invisible until they find the right warm intro. Diligence takes weeks, and promising builders are missed because their profiles are scattered across GitHub commits, pitch decks, and social footprints.
 
-VC Brain evolved from an AI Stock Intelligence Platform (multi-agent pipeline using Ollama + FRED + Yahoo Finance). The agents were repurposed for founder discovery — the same parallel runner, evidence-chain pattern, and trust-score mechanism that tracked macro signals now tracks founder signals from GitHub.
-
-```
-┌─────────────────────────────────────────────────────────┐
-│                   Flask Dashboard (app.py)               │
-│  /api/founders  /api/screen/<idx>  /api/thesis           │
-└──────────┬───────────────────┬───────────────────────────┘
-           │                   │
-    ┌──────▼──────┐    ┌───────▼──────────────────┐
-    │  sourcing.py │    │    scoring_engine.py      │
-    │  inbound +   │    │  3-axis screening:        │
-    │  outbound    │    │  founder / market /       │
-    │  profiles    │    │  idea-vs-market           │
-    └─────────────┘    └───────────────────────────┘
-                               │
-               ┌───────────────┼──────────────────┐
-               │               │                  │
-    ┌──────────▼──┐  ┌─────────▼─────┐  ┌────────▼──────┐
-    │ trust_score │  │ memo_generator│  │ reasoning_log │
-    │ extract +   │  │ evidence-backed│  │ chain-of-thought│
-    │ verify claims│  │ memos with gap │  │ per conclusion │
-    │             │  │ flagging       │  │ data citation  │
-    └─────────────┘  └───────────────┘  └───────────────┘
-```
-
-**Key modules:**
-
-| Module | Responsibility |
-|--------|---------------|
-| `data/sourcing.py` | Load/scan inbound + outbound founder profiles |
-| `data/founder_signals.py` | 5 GitHub signals: commit frequency, star growth, contributor count, recency, tech stack depth |
-| `data/scoring_engine.py` | Three-axis screening; thesis matching; risk flags |
-| `data/thesis_engine.py` | Configurable ThesisConfig (sectors, stages, check size, risk appetite) |
-| `data/trust_score.py` | Claim extraction (LLM, offline fallback) + rule-based signal verification |
-| `data/memo_generator.py` | Investment memo generation; "not disclosed" gap flagging |
-| `data/reasoning_log.py` | Agentic traceability: chain-of-thought reasoning log with data citations |
-| `data/risk_flags.py` | Four risk categories: solo founder, stale repo, missing data, claim contradiction |
+**VC Brain** transforms this relationship-gated system into an **equitable capital allocation engine**. It discovers exceptional founders early, scores them transparently on independent axes, and produces evidence-backed investment decisions in hours instead of weeks.
 
 ---
 
-## How to Run
+## 🧭 System Architecture & Flow
 
-### Prerequisites
+VC Brain is built on a structured, three-layered architecture (Memory, Intelligence, and Experience) executing a 4-stage pipeline: **Sourcing ➔ Screening ➔ Diligence ➔ Decision**.
 
-- Python 3.9+
-- [Ollama](https://ollama.ai) (only needed for claim extraction; all other features are offline-safe)
-
-### Setup
-
-```bash
-git clone <repo>
-cd vc-brain
-pip install -r requirements.txt
-
-# Optional — for LLM-powered claim extraction
-ollama pull llama3.2:3b
-ollama serve
+```
+                       ┌─────────────────────────────────────────────────────────┐
+                       │                EXPERIENCE LAYER (HTML5/CSS)             │
+                       │           Notion-Style UI Dashboard (index.html)        │
+                       └────────────────────┬────────────────┬───────────────────┘
+                                            │                │
+                       ┌────────────────────▼────────────────▼───────────────────┐
+                       │                   INTELLIGENCE LAYER (Python)           │
+                       │   [Sourcing Filter]         ➔      [Scoring Engine]     │
+                       │   data/sourcing.py                 data/scoring_engine.py
+                       │   (Inbound/Outbound Funnel)        (3-Axis Screening)   │
+                       └────────────┬────────────────────────────────┬───────────┘
+                                    │                                │
+                       ┌────────────▼────────────────────────────────▼───────────┐
+                       │                     DILIGENCE & DECISION LAYER          │
+                       │   [Trust Score Verification]➔      [Memo Generator]     │
+                       │   data/trust_score.py              data/memo_generator.py
+                       │   (Rule-based Claims Validation)   (Explicit Gap Flagging)
+                       └────────────┬────────────────────────────────┬───────────┘
+                                    │                                │
+                       ┌────────────▼────────────────────────────────▼───────────┐
+                       │                     MEMORY LAYER (Persistence)          │
+                       │   [Founder Score History]   ➔      [Traceability Log]   │
+                       │   data/founder_memory.json         data/reasoning_log.py
+                       │   (JSON Persistent Database)       (Chain-of-Thought Logs)
+                       └─────────────────────────────────────────────────────────┘
 ```
 
-### Run the dashboard
+### 🔁 End-to-End Pipeline Execution Flow:
+1. **Sourcing**: Founders enter via inbound pitch deck uploads (which go through a fast first-pass junk filter) or outbound automated GitHub scans.
+2. **Screening**: The scoring engine runs parallel agents to evaluate the founder on three independent axes (Founder, Market, and Idea-vs-Market). Scores are *never* averaged or combined to hide disagreement.
+3. **Diligence**: The LLM extracts specific founder assertions. A rule-based Validator cross-checks these claims against actual GitHub repository signals to determine trust status (`verified`, `unverifiable`, or `contradicted`).
+4. **Decision**: The system compiles a structured investment memo, automatically marking missing variables as `[Not Disclosed]` rather than fabricating data. It appends an agentic chain-of-thought log showing exactly which data point drove each score.
 
+---
+
+## 🛠️ The Tech Stack
+
+- **Backend Framework**: Python 3.9+ with Flask (lightweight, modular, and stateless API endpoints).
+- **AI / LLM Engine**: Local [Ollama](https://ollama.ai) (running `llama3.2:3b`) for unstructured claim extraction and natural-language multi-attribute semantic queries.
+- **Data Logic & Validation**: Pure Python mathematical and heuristic rule engines (ensures fast execution and robust offline fallback when LLM is unavailable).
+- **Frontend Layer**: Single-Page Application (SPA) dashboard built with semantic HTML5, Vanilla JavaScript, and a customized premium CSS system (custom HSL color palette, slate-dark gradients, glassmorphism tokens, and responsive transitions).
+- **Libraries**: `requests` (http calls), `PyPDF2` (pitch deck processing), `pytest` (comprehensive automated test suite).
+
+---
+
+## 📂 Codebase & Module Directory
+
+| Module | Location | Responsibility |
+| :--- | :--- | :--- |
+| **Sourcing funnel** | [`data/sourcing.py`](file:///e:/startup-Investement-planner-/data/sourcing.py) | Ingests inbound decks & outbound GitHub scans. Implements the fast first-pass filter and activation email flow. |
+| **Profile Parser** | [`data/founder_data.py`](file:///e:/startup-Investement-planner-/data/founder_data.py) | Ingests PDF/txt pitch decks and pulls public user metadata from the GitHub REST API. |
+| **Signals Generator** | [`data/founder_signals.py`](file:///e:/startup-Investement-planner-/data/founder_signals.py) | Calculates developer metrics: commit frequency, star growth rate, contributor counts, repo recency, and tech stack depth. |
+| **Scoring Engine** | [`data/scoring_engine.py`](file:///e:/startup-Investement-planner-/data/scoring_engine.py) | Executes multi-axis analysis. Implements persistent JSON `FounderMemory` and natural language queries. |
+| **Thesis Filter** | [`data/thesis_engine.py`](file:///e:/startup-Investement-planner-/data/thesis_engine.py) | Evaluates candidates against custom investor mandates (sectors, stage, risk appetite). |
+| **Trust Scorer** | [`data/trust_score.py`](file:///e:/startup-Investement-planner-/data/trust_score.py) | Extracts claims from text via local LLM and verifies them against repo data to calculate Trust Scores. |
+| **Memo Builder** | [`data/memo_generator.py`](file:///e:/startup-Investement-planner-/data/memo_generator.py) | Assembles the final 5 required sections of the Investment Memo and handles gap-flagging. |
+| **Risk Scanner** | [`data/risk_flags.py`](file:///e:/startup-Investement-planner-/data/risk_flags.py) | Scans for solo founders, stale repos, missing data, and high-severity claim contradictions. |
+| **Traceability Log** | [`data/reasoning_log.py`](file:///e:/startup-Investement-planner-/data/reasoning_log.py) | Constructs step-by-step chain-of-thought logs detailing the logic behind each conclusion. |
+| **UI Dashboard** | [`templates/index.html`](file:///e:/startup-Investement-planner-/templates/index.html) | Notion-style responsive investor interface with interactive charts, badges, and controls. |
+
+---
+
+## 📹 Tech Video Script & Presentation Guide (5 Minutes)
+
+Use this structured outline to record a compelling hackathon submission video.
+
+### **0:00 - 0:45 | The Pitch & Hook (Why VC Brain?)**
+- **Action**: Share your screen showing the dashboard home screen or the "Sourcing" tab.
+- **Talking Points**: 
+  - *"Welcome to VC Brain. Traditional venture capital relies on who you know. We've built an AI-first operating system that changes this, scanning developer signals and pitch decks to back exceptional founders in 24 hours."*
+  - *"We ingest data from heterogeneous sources, score opportunities across independent axes, verify founder claims to produce a Trust Score, and display the full chain-of-thought logic behind every recommendation."*
+
+### **0:45 - 1:45 | Core Tech Stack & Architecture**
+- **Action**: Briefly show the code structure or the architecture diagram from the README.
+- **Talking Points**:
+  - *"The stack is built on Python and Flask for a modular, high-speed backend, calling local Ollama models (Llama 3.2) for NLP task extraction. The frontend is a responsive Vanilla CSS single-page dashboard."*
+  - *"Our backend executes a strict 4-stage pipeline: Sourcing, Screening, Diligence, and Decision. To prevent hallucinations, we use a hybrid approach: local LLMs perform text claim extraction, while pure Python rule-engines cross-reference facts against hard data."*
+
+### **1:45 - 3:00 | Deep Dive into the Pillars (Live Demo)**
+- **Action**: Click **Sourcing** in the sidebar. Highlight inbound vs. outbound candidates. Click **Screen** on a founder (e.g., Sofia Andersson / DeployKit).
+- **Talking Points**:
+  - ***Sourcing***: *"Here we have a unified inbox of inbound deck applications and outbound candidates found on GitHub. Notice the automated outreach templates generated when we activate an outbound founder."*
+  - ***Multi-Axis Screening***: *"Sofia has been scored separately across Founder (based on repo commits/contributors), Market, and Idea-vs-Market. Critically, we never average these scores, showing investors the exact details of any disagreements."*
+  - ***Thesis Engine***: *"We evaluate Sofia against our custom investment thesis. Investors can change sectors, stages, and check sizes in real-time under Thesis Config, and the pipeline filters profiles dynamically."*
+
+### **3:00 - 4:15 | Trust Scoring & Agentic Traceability**
+- **Action**: Navigate to the **Investment Memo** tab for the screened founder. Scroll down to show claim badges (`verified`, `contradicted`, `unverifiable`). Click **Show Reasoning** to open the CoT log.
+- **Talking Points**:
+  - ***Trust Score***: *"Every assertion the founder makes in their pitch deck is parsed by the LLM. Our Validator Agent checks this against GitHub data. For example, if a founder claims 50,000 active users, but their repo has only 3 stars, it is marked as `contradicted`."*
+  - ***No Fabrication***: *"If a founder doesn't disclose financials or a cap table, the system explicitly flags `[Not Disclosed]` rather than hallucinating text."*
+  - ***Traceability***: *"In the reasoning panel, you can see every single pipeline step. The system outputs which exact file, line, or repo signal was used to support a conclusion, providing complete transparency."*
+
+### **4:15 - 5:00 | Outro & Summary**
+- **Action**: Show the **Multi-Attribute Search** bar. Enter a query like *"technical founder, AI infra"* to show it filter profiles.
+- **Talking Points**:
+  - *"VC Brain demonstrates that venture capital can be data-driven, offline-safe, and transparent. Thank you for watching!"*
+
+---
+
+## 🚀 How to Run Locally
+
+### 1. Prerequisites
+- **Python 3.9+**
+- **Ollama** (optional, for LLM claims extraction. If not running, VC Brain falls back to offline rule-based extraction).
+  ```bash
+  # Pull the default model
+  ollama pull llama3.2:3b
+  ollama serve
+  ```
+
+### 2. Setup & Installation
+1. Clone this repository.
+2. Install dependencies:
+   ```bash
+   pip install -r requirements.txt
+   ```
+
+### 3. Run the Dashboard
 ```bash
 python app.py
 ```
+Open `http://localhost:5000` in your web browser.
 
-Open `http://localhost:5000` — navigate to **Sourcing** in the sidebar to load demo founders.
-
-### Environment variables (all optional)
-
-| Variable | Default | Purpose |
-|----------|---------|---------|
-| `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
-| `OLLAMA_MODEL` | `llama3.2:3b` | Model for claim extraction |
-| `FLASK_PORT` | `5000` | Dashboard port |
-| `FLASK_DEBUG` | `false` | Enable Flask debug mode |
-
----
-
-## Demo Flow
-
-1. **Sourcing** — Load the 19 synthetic demo profiles (mix of inbound + outbound); note the `outbound` chip on GitHub-scanned founders
-2. **Screen a founder** — Click Screen on any row to run the full pipeline
-3. **Screening view** — See the three axes displayed separately with scores, trend arrows, and evidence bullets; check the thesis match result and risk flags
-4. **Memo view** — Every claim carries a `verified` / `unverifiable` / `contradicted` badge; "not disclosed" sections are flagged explicitly
-5. **Reasoning panel** — Expand "Show reasoning" on the Screening view to see the full chain-of-thought log
-
-**Demo highlights:**
-- **Priya Venkatesan / FinAI Labs** — inbound; `total_stars=92` vs. `claimed_users=48000` triggers a `contradicted` badge
-- **Devon Marsh / TractionMax** — `total_stars=3`, `recency=210 days`, claimed 200k users — high-severity contradiction
-- **Sofia Andersson / DeployKit** — outbound-sourced; strong commit signals
-
----
-
-## Tests
-
+### 4. Running Automated Tests
+VC Brain has a robust automated test suite covering all modules:
 ```bash
 pytest tests/ -v
 ```
 
-Key test suites:
+---
 
-| Suite | Tests | Coverage |
-|-------|-------|----------|
-| `test_reasoning_log.py` | 11 | ReasoningLog: axis steps, claim steps, gap filtering, placeholder sanitisation, ISO timestamps |
-| `test_scoring_engine.py` | 20+ | Three-axis scoring, FounderMemory persistence, thesis matching |
-| `test_trust_score.py` | 15+ | Claim extraction (mocked LLM), verify_claim signal matching, contradictions |
-| `test_memo_generator.py` | 10+ | Memo sections, gap flagging, "not disclosed" behaviour |
-| `test_thesis_engine.py` | 8+ | ThesisConfig rules, PASS/FAIL/WATCHLIST verdicts |
-| `test_risk_flags.py` | 8+ | All four risk categories and severity levels |
-| `test_sourcing.py` | 6+ | Inbound/outbound loading, source filtering |
+## 🏆 Hackathon Evaluation Criteria Mapping
 
-All tests run offline — no Ollama or GitHub API calls required.
+- **Data Architecture (30%)**: Features robust ingestion of public GitHub REST endpoints and pitch deck texts, deduplicating records in a local persistent JSON memory.
+- **Intelligent Analysis (25%)**: Runs claim validation comparing unstructured deck text assertions to structural signals, flagging anomalies automatically.
+- **Investment Utility (30%)**: Produces investor-ready, structured memos with gap warnings, and outputs an interactive multi-attribute natural-language search bar.
+- **User Experience (15%)**: Styled using a premium, clean dark-slate CSS grid. Notion-level approachability with Bloomberg-level analytical depth.
