@@ -47,6 +47,10 @@ ollama pull llama3.2:3b
 ```bash
 python app.py
 # → http://localhost:5000
+
+ #* Running on all addresses (0.0.0.0)
+ #* Running on http://127.0.0.1:5000
+ #* Running on http://192.168.18.116:5000
 ```
 
 ## API Endpoints
