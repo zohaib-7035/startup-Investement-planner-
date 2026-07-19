@@ -89,23 +89,51 @@ def _non_contradicted(vcs: List[VerifiedClaim]) -> List[VerifiedClaim]:
 
 def _build_company_snapshot(profile: FounderProfile, verified_claims: List[VerifiedClaim]) -> MemoSection:
     company = profile.company or profile.name or "Unknown Company"
-    sector = profile.sector or "Unspecified"
-    stage = profile.stage or "Unspecified"
-    github = profile.github_url or NOT_DISCLOSED
+    sector = profile.sector or "unspecified"
+    stage = profile.stage or "unspecified"
+    ks = profile.key_signals or {}
 
-    lines = [
-        f"Company: {company}",
-        f"Sector: {sector}",
-        f"Stage: {stage}",
-        f"GitHub: {github}",
-    ]
+    # Build narrative paragraph as required by the memo spec
+    stars = ks.get("total_stars")
+    users = ks.get("claimed_users")
+    commits = ks.get("commit_frequency")
+    contributors = ks.get("contributor_count")
+    recency = ks.get("recency")
+
+    traction_parts = []
+    if users and int(users) > 0:
+        traction_parts.append(f"{int(users):,} claimed users")
+    if stars and int(stars) > 0:
+        traction_parts.append(f"{int(stars):,} GitHub stars")
+    if commits:
+        traction_parts.append(f"{float(commits):.1f} commits/week")
+    if contributors and int(contributors) > 1:
+        traction_parts.append(f"{int(contributors)} active contributors")
+
+    market_map = {"fintech": "financial services", "healthtech": "healthcare technology",
+                  "saas": "software-as-a-service", "ai/ml": "AI/ML infrastructure",
+                  "cleantech": "clean energy", "edtech": "education technology"}
+    market_label = market_map.get(sector.lower(), sector)
+
+    recency_note = ""
+    if recency is not None:
+        days = int(recency)
+        recency_note = (f" Repository last pushed {days} day{'s' if days != 1 else ''} ago"
+                        f" — {'actively maintained' if days <= 7 else 'recently active' if days <= 30 else 'low recent activity'}.")
+
+    traction_note = (f" Early signals: {', '.join(traction_parts)}." if traction_parts else "")
+    github_note = f" GitHub: {profile.github_url}." if profile.github_url else ""
+
+    paragraph = (
+        f"{company} is a {stage}-stage {market_label} company operating in the {sector} sector."
+        f"{traction_note}{recency_note}{github_note}"
+        f" The structural opportunity is to deliver {market_label} solutions"
+        f" to a market where incumbents are slow to adopt modern AI-native tooling."
+    )
 
     team_vcs = _verified_only(_claims_for_categories(verified_claims, ("team",)))
-    for vc in team_vcs:
-        lines.append(f"Team: {vc.claim.claim_text} (verified, confidence {vc.verification_confidence:.0%})")
-
     claims = team_vcs if team_vcs else [_gap_claim("company_snapshot")]
-    return MemoSection(title="Company Snapshot", content="\n".join(lines), claims=claims)
+    return MemoSection(title="Company Snapshot", content=paragraph, claims=claims)
 
 
 def _build_investment_hypotheses(screening: ScreeningResult, verified_claims: List[VerifiedClaim]) -> MemoSection:
@@ -226,6 +254,81 @@ def _build_traction_and_kpis(verified_claims: List[VerifiedClaim]) -> MemoSectio
     )
 
 
+def _build_team_and_history(profile: FounderProfile, verified_claims: List[VerifiedClaim]) -> MemoSection:
+    ks = profile.key_signals or {}
+    contributors = ks.get("contributor_count")
+    commits = ks.get("commit_frequency")
+    recency = ks.get("recency")
+    source = ks.get("source", "inbound")
+
+    lines = []
+    if profile.name:
+        lines.append(f"Lead founder: {profile.name} ({profile.company or 'company'}) — sourced via {source}.")
+    if contributors and int(contributors) > 1:
+        lines.append(f"Team size: {int(contributors)} active GitHub contributors.")
+    elif contributors == 1:
+        lines.append("Solo founder — single contributor on GitHub (flag: no co-founder signals).")
+    if commits:
+        lines.append(f"Engineering cadence: {float(commits):.1f} commits/week average.")
+    if recency is not None:
+        days = int(recency)
+        label = "actively maintained" if days <= 7 else "recently active" if days <= 30 else "stale — low recent activity"
+        lines.append(f"Repository freshness: last push {days} days ago ({label}).")
+
+    team_vcs = _claims_for_categories(verified_claims, ("team",))
+    for vc in team_vcs:
+        if vc.claim.claim_text.lower() != "not disclosed":
+            lines.append(f"Signal: {vc.claim.claim_text} [{vc.status}]")
+
+    if not lines:
+        return _make_unavailable("Team & History")
+
+    lines.append("Company timeline and prior exit history: not disclosed.")
+    return MemoSection(
+        title="Team & History",
+        content="\n".join(f"  - {l}" for l in lines),
+        claims=team_vcs if team_vcs else [_gap_claim("team_history")],
+    )
+
+
+def _build_technology_defensibility(profile: FounderProfile, verified_claims: List[VerifiedClaim]) -> MemoSection:
+    ks = profile.key_signals or {}
+    stars = ks.get("total_stars", 0)
+    commits = ks.get("commit_frequency")
+    tech_depth = ks.get("tech_stack_depth")
+    sector = profile.sector or "unknown"
+
+    lines = []
+
+    if tech_depth is not None:
+        lines.append(f"Tech stack depth signal: {tech_depth}/100 — "
+                     + ("broad multi-language stack." if float(tech_depth) > 60
+                        else "focused stack, potential specialisation." if float(tech_depth) > 35
+                        else "shallow stack — commoditisation risk."))
+
+    if stars and int(stars) > 0:
+        s = int(stars)
+        adoption = "strong OSS adoption" if s > 1000 else "growing community" if s > 100 else "early-stage traction"
+        lines.append(f"Open-source footprint: {s:,} GitHub stars — {adoption}.")
+
+    if commits:
+        c = float(commits)
+        lines.append(f"Development velocity: {c:.1f} commits/week — "
+                     + ("high-cadence iteration, suggests rapid product development." if c > 10
+                        else "steady iteration." if c > 3
+                        else "low velocity — potential execution risk."))
+
+    lines.append(f"Sector ({sector}): proprietary advantage and data moat details not disclosed.")
+    lines.append("Architecture choices and defensibility compounding: not disclosed — to be validated in diligence.")
+
+    traction_vcs = _verified_only(_claims_for_categories(verified_claims, ("traction",)))
+    return MemoSection(
+        title="Technology & Defensibility",
+        content="\n".join(f"  - {l}" for l in lines),
+        claims=traction_vcs if traction_vcs else [_gap_claim("technology_defensibility")],
+    )
+
+
 def _build_optional_section(title: str, categories: tuple, verified_claims: List[VerifiedClaim]) -> MemoSection:
     relevant = [
         vc for vc in verified_claims
@@ -263,6 +366,8 @@ def generate_memo(
         ]
 
         optional = [
+            _build_team_and_history(profile, verified_claims),
+            _build_technology_defensibility(profile, verified_claims),
             _build_optional_section("Financials & Round Structure", ("revenue",), verified_claims),
             _build_optional_section("Cap Table", ("other",), verified_claims),
             _build_optional_section("Competition", ("market_size",), verified_claims),

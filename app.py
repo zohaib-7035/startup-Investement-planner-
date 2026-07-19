@@ -267,6 +267,75 @@ def api_thesis_post():
         return jsonify({"error": str(e)}), 500
 
 
+@app.route("/api/query", methods=["POST"])
+def api_query():
+    """
+    Natural-language multi-attribute founder search.
+    Body: { "query": "technical founder, AI infra, enterprise traction" }
+    Screens all founders with fast rule-based scoring, then filters via Ollama NL query.
+    """
+    body = request.get_json(silent=True) or {}
+    q = str(body.get("query", "")).strip()
+    if not q:
+        return jsonify({"error": "query field is required"}), 400
+    try:
+        from data.sourcing import load_sample_founders
+        from data.scoring_engine import (
+            ScreeningResult, score_founder_axis, score_market_axis,
+            _idea_vs_market_rule_based, query_founders,
+        )
+        from data.founder_signals import generate_founder_signals
+        from data.risk_flags import flag_risks
+        from data.thesis_engine import evaluate_founder
+
+        founders = load_sample_founders()
+        thesis = _load_thesis_config()
+
+        screened = []
+        for profile in founders:
+            signals = generate_founder_signals(profile)
+            fa = score_founder_axis(profile)
+            ma = score_market_axis(profile)
+            ima = _idea_vs_market_rule_based(profile)
+            rf = flag_risks(profile, signals)
+            tr = evaluate_founder(profile, thesis)
+            if tr.verdict == "PASS":
+                thesis_match, thesis_reason = True, "Matched: " + ", ".join(tr.matched_rules)
+            elif tr.verdict == "WATCHLIST":
+                thesis_match, thesis_reason = True, "No thesis constraints active"
+            else:
+                thesis_match, thesis_reason = False, "Failed: " + ", ".join(tr.failed_rules)
+            screened.append(ScreeningResult(
+                profile=profile,
+                founder_axis=fa,
+                market_axis=ma,
+                idea_vs_market_axis=ima,
+                risk_flags=rf,
+                thesis_match=thesis_match,
+                thesis_reason=thesis_reason,
+            ))
+
+        matched = query_founders(q, screened)
+        matched_companies = {sr.profile.company for sr in matched}
+
+        result = []
+        for idx, profile in enumerate(founders):
+            if profile.company in matched_companies:
+                ks = profile.key_signals or {}
+                result.append({
+                    "founder_id": idx,
+                    "name":    profile.name or "",
+                    "company": profile.company or "",
+                    "sector":  profile.sector or "",
+                    "stage":   profile.stage or "",
+                    "source":  ks.get("source", "inbound"),
+                })
+        return jsonify(result)
+    except Exception as e:
+        log.error("api_query: %s", e, exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
 # ── Legacy VC Brain routes (deprecated — use /api/screen/<idx>) ───────────────
 
 @app.route("/source", methods=["POST"])

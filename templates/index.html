@@ -1162,7 +1162,14 @@ details.reasoning-panel[open] summary::before{transform:rotate(90deg)}
               <button class="btn btn-s" id="btn-toggle-source" onclick="toggleSource(this)"
                 aria-pressed="false" aria-label="Show all sources" style="flex:1">All sources</button>
             </div>
-            
+            <div style="display:flex;gap:8px;align-items:center">
+              <input class="inp" type="text" id="nl-query-input"
+                placeholder="e.g. technical founder, AI infra, enterprise traction"
+                style="flex:1;font-size:11px" aria-label="Natural language founder search"
+                onkeydown="if(event.key==='Enter') nlSearch()">
+              <button class="btn btn-s" onclick="nlSearch()" aria-label="Search founders" style="white-space:nowrap">🔍 Search</button>
+            </div>
+            <div id="nl-query-status" style="font-size:10px;color:var(--muted);min-height:14px"></div>
             <div id="sourcing-stats-container">
               <!-- Dynamically populated stats -->
             </div>
@@ -1507,8 +1514,30 @@ function toggleSource(btn){
   renderFounderList(_foundersCache);
 }
 
+async function nlSearch(){
+  const q = (document.getElementById('nl-query-input').value || '').trim();
+  const statusEl = document.getElementById('nl-query-status');
+  if(!q){ statusEl.textContent = 'Enter a query to search.'; return; }
+  statusEl.textContent = 'Searching… (running NL query via Ollama)';
+  const el = document.getElementById('sourcing-results');
+  el.innerHTML = `<div style="padding:8px;font-size:12px;color:var(--muted)">Searching founders…</div>`;
+  try {
+    const data = await fetchJSON('/api/query', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({query: q})
+    });
+    _foundersCache = data;
+    renderFounderList(data);
+    statusEl.textContent = `Found ${data.length} match${data.length!==1?'es':''} for "${q}". Clear query to reset.`;
+  } catch(e) {
+    statusEl.textContent = 'Search error: ' + e.message;
+    setErr('sourcing-results', e.message);
+  }
+}
+
 async function loadFounders(){
   const el = document.getElementById('sourcing-results');
+  document.getElementById('nl-query-status').textContent = '';
+  document.getElementById('nl-query-input').value = '';
   el.innerHTML = `<div style="padding:8px;font-size:12px;color:var(--muted)">Loading founders…</div>`;
   try {
     const data = await fetchJSON('/api/founders');
