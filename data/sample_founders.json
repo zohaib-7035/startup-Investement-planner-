@@ -1,0 +1,303 @@
+[
+  {
+    "name": "Priya Venkatesan",
+    "company": "FinAI Labs",
+    "sector": "FinTech",
+    "stage": "Series A",
+    "github_url": null,
+    "key_signals": {
+      "source": "inbound",
+      "funnel_stage": "screening",
+      "claimed_users": 48000,
+      "total_stars": 92,
+      "commit_frequency": 7.5,
+      "contributor_count": 6,
+      "recency": 8
+    },
+    "raw_sources": ["pitch_deck_text"]
+  },
+  {
+    "name": "Marcus Owusu",
+    "company": "MediTrack Pro",
+    "sector": "HealthTech",
+    "stage": "pre-seed",
+    "github_url": null,
+    "key_signals": {
+      "source": "inbound",
+      "funnel_stage": "screening",
+      "claimed_users": 320,
+      "total_stars": 14,
+      "commit_frequency": 3.0,
+      "contributor_count": 2,
+      "recency": 21
+    },
+    "raw_sources": ["pitch_deck_text"]
+  },
+  {
+    "name": "Sofia Andersson",
+    "company": "DeployKit",
+    "sector": "SaaS",
+    "stage": "seed",
+    "github_url": null,
+    "key_signals": {
+      "source": "inbound",
+      "funnel_stage": "screening",
+      "claimed_users": 1800,
+      "total_stars": 210,
+      "commit_frequency": 11.0,
+      "contributor_count": 4,
+      "recency": 3
+    },
+    "raw_sources": ["pitch_deck_text"]
+  },
+  {
+    "name": "James Okafor",
+    "company": "ClearCredit",
+    "sector": "FinTech",
+    "stage": "pre-seed",
+    "github_url": null,
+    "key_signals": {
+      "source": "inbound",
+      "funnel_stage": "screening",
+      "claimed_users": 4200,
+      "total_stars": 37,
+      "commit_frequency": 4.5,
+      "contributor_count": 3,
+      "recency": 45
+    },
+    "raw_sources": ["pitch_deck_text"]
+  },
+  {
+    "name": "Yuki Tanaka",
+    "company": "NanoMed AI",
+    "sector": "HealthTech",
+    "stage": "Series A",
+    "github_url": null,
+    "key_signals": {
+      "source": "inbound",
+      "funnel_stage": "screening",
+      "claimed_users": 12000,
+      "total_stars": 580,
+      "commit_frequency": 9.0,
+      "contributor_count": 11,
+      "recency": 5
+    },
+    "raw_sources": ["pitch_deck_text"]
+  },
+  {
+    "name": "Aisha Bello",
+    "company": "EduPath",
+    "sector": "EdTech",
+    "stage": "pre-seed",
+    "github_url": null,
+    "key_signals": {
+      "source": "inbound",
+      "funnel_stage": "screening",
+      "claimed_users": 2900,
+      "total_stars": 56,
+      "commit_frequency": 2.0,
+      "contributor_count": 2,
+      "recency": 60
+    },
+    "raw_sources": ["pitch_deck_text"]
+  },
+  {
+    "name": "Ricardo Ferreira",
+    "company": "SolarGrid AI",
+    "sector": "CleanTech",
+    "stage": "pre-seed",
+    "github_url": null,
+    "key_signals": {
+      "source": "inbound",
+      "funnel_stage": "screening",
+      "claimed_users": 700,
+      "total_stars": 29,
+      "commit_frequency": 5.0,
+      "contributor_count": 3,
+      "recency": 14
+    },
+    "raw_sources": ["pitch_deck_text"]
+  },
+  {
+    "name": "Devon Marsh",
+    "company": "TractionMax",
+    "sector": "FinTech",
+    "stage": "seed",
+    "github_url": null,
+    "key_signals": {
+      "source": "inbound",
+      "funnel_stage": "screening",
+      "claimed_users": 200000,
+      "total_stars": 3,
+      "commit_frequency": 0.5,
+      "contributor_count": 1,
+      "recency": 210,
+      "note": "SEEDED CONTRADICTION: deck claims 200k users but total_stars=3 and recency=210 days — high risk of fabricated traction"
+    },
+    "raw_sources": ["pitch_deck_text"]
+  },
+  {
+    "name": "Lena Vogel",
+    "company": "HyperScale SaaS",
+    "sector": "SaaS",
+    "stage": "Series A",
+    "github_url": null,
+    "key_signals": {
+      "source": "inbound",
+      "funnel_stage": "screening",
+      "claimed_users": 75000,
+      "total_stars": 5,
+      "commit_frequency": 1.0,
+      "contributor_count": 1,
+      "recency": 190,
+      "note": "SEEDED CONTRADICTION: deck claims 75k users at Series A stage but solo founder (contributor_count=1) with near-zero GitHub activity"
+    },
+    "raw_sources": ["pitch_deck_text"]
+  },
+  {
+    "name": "ml-labs",
+    "company": "agentkit-py",
+    "sector": "AI/ML",
+    "stage": null,
+    "github_url": "https://github.com/ml-labs/agentkit-py",
+    "key_signals": {
+      "source": "outbound",
+      "funnel_stage": "screening",
+      "activated": true,
+      "total_stars": 2400,
+      "recency_days": 4,
+      "description": "Production-grade AI agent framework with tool use and memory"
+    },
+    "raw_sources": ["https://github.com/ml-labs/agentkit-py"]
+  },
+  {
+    "name": "findevs",
+    "company": "paystream-sdk",
+    "sector": "FinTech",
+    "stage": null,
+    "github_url": "https://github.com/findevs/paystream-sdk",
+    "key_signals": {
+      "source": "outbound",
+      "funnel_stage": "screening",
+      "activated": true,
+      "total_stars": 890,
+      "recency_days": 11,
+      "description": "Open-source payment processing SDK supporting Stripe, Adyen, and 12 other gateways"
+    },
+    "raw_sources": ["https://github.com/findevs/paystream-sdk"]
+  },
+  {
+    "name": "biotech-oss",
+    "company": "cliniq-ai",
+    "sector": "HealthTech",
+    "stage": null,
+    "github_url": "https://github.com/biotech-oss/cliniq-ai",
+    "key_signals": {
+      "source": "outbound",
+      "funnel_stage": "screening",
+      "activated": true,
+      "total_stars": 340,
+      "recency_days": 19,
+      "description": "Clinical NLP for automated medical record summarisation and diagnostic assistance"
+    },
+    "raw_sources": ["https://github.com/biotech-oss/cliniq-ai"]
+  },
+  {
+    "name": "buildfast-team",
+    "company": "fastbuild",
+    "sector": "SaaS",
+    "stage": null,
+    "github_url": "https://github.com/buildfast-team/fastbuild",
+    "key_signals": {
+      "source": "outbound",
+      "funnel_stage": "screening",
+      "activated": true,
+      "total_stars": 1200,
+      "recency_days": 7,
+      "description": "Zero-config CI/CD platform for small engineering teams — deploy in under 5 minutes"
+    },
+    "raw_sources": ["https://github.com/buildfast-team/fastbuild"]
+  },
+  {
+    "name": "greenpilot-oss",
+    "company": "solargrid-optimizer",
+    "sector": "CleanTech",
+    "stage": null,
+    "github_url": "https://github.com/greenpilot-oss/solargrid-optimizer",
+    "key_signals": {
+      "source": "outbound",
+      "funnel_stage": "screening",
+      "activated": true,
+      "total_stars": 560,
+      "recency_days": 28,
+      "description": "ML-based solar panel output forecasting and grid load balancing for renewable energy operators"
+    },
+    "raw_sources": ["https://github.com/greenpilot-oss/solargrid-optimizer"]
+  },
+  {
+    "name": "promptlabs",
+    "company": "promptflow-lib",
+    "sector": "AI/ML",
+    "stage": null,
+    "github_url": "https://github.com/promptlabs/promptflow-lib",
+    "key_signals": {
+      "source": "outbound",
+      "funnel_stage": "screening",
+      "activated": true,
+      "total_stars": 3100,
+      "recency_days": 2,
+      "description": "Composable prompt chaining library with built-in evaluation harness and LLM provider routing"
+    },
+    "raw_sources": ["https://github.com/promptlabs/promptflow-lib"]
+  },
+  {
+    "name": "viralclaim-io",
+    "company": "viralclaim",
+    "sector": "SaaS",
+    "stage": null,
+    "github_url": "https://github.com/viralclaim-io/viralclaim",
+    "key_signals": {
+      "source": "outbound",
+      "funnel_stage": "screening",
+      "activated": true,
+      "claimed_users": 300000,
+      "total_stars": 2,
+      "recency_days": 280,
+      "description": "Social growth analytics platform",
+      "note": "SEEDED CONTRADICTION: outbound profile claims 300k users but repo has 2 stars and has not been pushed to in 280 days — likely abandoned project or fabricated claim"
+    },
+    "raw_sources": ["https://github.com/viralclaim-io/viralclaim"]
+  },
+  {
+    "name": "edu-collective",
+    "company": "courseware-api",
+    "sector": "EdTech",
+    "stage": null,
+    "github_url": "https://github.com/edu-collective/courseware-api",
+    "key_signals": {
+      "source": "outbound",
+      "funnel_stage": "screening",
+      "activated": true,
+      "total_stars": 720,
+      "recency_days": 16,
+      "description": "RESTful API for building adaptive learning platforms with spaced repetition and progress tracking"
+    },
+    "raw_sources": ["https://github.com/edu-collective/courseware-api"]
+  },
+  {
+    "name": "fintech-builders",
+    "company": "microinsure",
+    "sector": "FinTech",
+    "stage": null,
+    "github_url": "https://github.com/fintech-builders/microinsure",
+    "key_signals": {
+      "source": "outbound",
+      "funnel_stage": "screening",
+      "activated": true,
+      "total_stars": 190,
+      "recency_days": 35,
+      "description": "Embedded microinsurance API for lending platforms — parametric policies, instant claims"
+    },
+    "raw_sources": ["https://github.com/fintech-builders/microinsure"]
+  }
+]

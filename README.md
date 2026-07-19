@@ -1,259 +1,77 @@
-# AI Stock Intelligence Platform
+# VC Brain — Startup Investment Intelligence
 
-A fully local, free-to-run stock analysis platform powered by a multi-agent AI pipeline. No paid APIs — everything runs on your machine using Ollama (local LLM), VADER (offline sentiment), yfinance (free market data), and FRED (free economic data).
-
-![Dark Theme UI](https://img.shields.io/badge/UI-Dark%20Theme-b8966a?style=flat-square)
-![Python](https://img.shields.io/badge/Python-3.9-blue?style=flat-square)
-![Flask](https://img.shields.io/badge/Flask-2.3-lightgrey?style=flat-square)
-![License](https://img.shields.io/badge/License-MIT-green?style=flat-square)
+A multi-agent AI pipeline that sources, scores, and generates investment memos for startup founders.
+Repurposed from AI-Stock-Intelligence-Platform for the VC Brain hackathon.
+No paid APIs — runs locally using GitHub REST API (free/unauthenticated) and Ollama (local LLM).
 
 ---
 
-## Features
+## What's Working vs. Stubbed
 
-- 8 fully functional pages in a single-page dark-theme dashboard
-- Multi-agent pipeline: sentiment, signals, risk, macro, screener, meta-decision all run in parallel
-- 100% local — no OpenAI, no Anthropic, no paid APIs
-- 532+ unit tests across 21 backend modules
+| Module | Status | Notes |
+|--------|--------|-------|
+| `data/founder_data.py` | **Working** | GitHub profile fetch (top-10 repos); pitch deck text/PDF ingestion with regex heuristics |
+| `data/founder_signals.py` | **Working** | 5 signals: commit_frequency, star_growth, contributor_count, recency, tech_stack_depth |
+| `data/thesis_engine.py` | **Working** | Configurable ThesisConfig; named-rule verdicts (PASS/FAIL/WATCHLIST) |
+| `data/risk_flags.py` | **Working** | 4 categories: solo_founder, stale_repo, missing_data, claim_contradiction |
+| `data/decision_engine.py` | **Stub axes** | AxisScore + DecisionResult implemented; founder/market/idea axis computations return 0.5 stub values |
+| `data/memo_generator.py` | **Working** | Required sections always present; optional sections default to "[Not Disclosed]" |
+| `data/parallel_runner.py` | **Working** | Generic dispatch dict interface; per-agent timeout + retry; no stock-specific code |
+| `data/market_context.py` | **Stub** | Public surface of macro_data.py preserved; returns empty dict |
+| `data/knowledge_graph.py` | **Retained** | Ollama triple extraction; system prompt is finance-flavoured (swap in Story 4) |
+| `data/graph_reasoning.py` | **Retained** | BFS impact analysis; domain-agnostic; ready for reuse |
+| `data/vector_store.py` | **Retained** | ChromaDB RAG; out of scope v1 |
+| `data/edgar_client.py` | **Retained** | SEC EDGAR filings; out of scope v1 |
+| `POST /source` | **Working** | Accepts `{"github": "username"}` or `{"pitch_deck": "text"}` |
+| `POST /score` | **Working** | Returns signals, thesis_result, risk_flags, decision |
+| `POST /memo` | **Working** | Returns InvestmentMemo JSON with [Not Disclosed] for absent optional sections |
 
----
-
-## Requirements
-
-| Requirement | Version |
-|-------------|---------|
-| Python | 3.9 |
-| Ollama | Latest |
-| Ollama model | `llama3.2:3b` |
+**Deleted (out of scope):** backtester, notifier, portfolio, scenario, market_data, openbb_client, meta_agent, report, stock, signals, screener, risk
 
 ---
 
 ## Installation
 
-**1. Clone the repository**
-```bash
-git clone https://github.com/YOUR_USERNAME/stock-analyzer.git
-cd stock-analyzer
-```
-
-**2. Install Python dependencies**
 ```bash
 pip install -r requirements.txt
 ```
 
-**3. Install and start Ollama**
-
-Download from [https://ollama.com](https://ollama.com), then run:
+Requires Ollama for the `/api/knowledge-graph` route:
 ```bash
 ollama serve
 ollama pull llama3.2:3b
 ```
 
-**4. Run the server**
+## Running
 
-Windows (recommended):
-```bash
-run_server.bat
-```
-
-Or directly:
 ```bash
 python app.py
+# → http://localhost:5000
 ```
 
-**5. Open in browser**
-```
-http://localhost:5000
-```
+## API Endpoints
 
----
+| Method | Path | Description |
+|--------|------|-------------|
+| `POST` | `/source` | Fetch founder profile from GitHub or pitch deck |
+| `POST` | `/score` | Run 3-axis scoring pipeline |
+| `POST` | `/memo` | Generate investment memo |
+| `GET` | `/api/status` | Health check (Ollama, VADER) |
+| `POST` | `/api/knowledge-graph` | Extract entity triples from text |
 
-## Environment Variables
-
-All have sensible defaults — you do not need to set any of these to get started.
-
-| Variable | Default | Description |
-|----------|---------|-------------|
-| `OLLAMA_URL` | `http://localhost:11434` | Ollama server address |
-| `OLLAMA_MODEL` | `llama3.2:3b` | LLM model to use |
-| `FLASK_PORT` | `5000` | Port Flask listens on |
-| `FLASK_HOST` | `0.0.0.0` | Host Flask binds to |
-| `FLASK_DEBUG` | `false` | Enable Flask debug mode |
-| `USE_TF` | `0` | Disable TensorFlow (keep 0) |
-| `USE_TORCH` | `1` | Enable PyTorch for embeddings |
-
----
-
-## Pages
-
-### 1. Stock Analysis
-**How to use:**
-1. Type a ticker symbol in the search box (e.g. `AAPL`, `TSLA`, `MSFT`)
-2. Click **Analyze**
-3. Wait ~10–30 seconds while the 6-agent pipeline runs in parallel
-
-**What you get:**
-- Buy / Sell / Hold recommendation with confidence score
-- Price history chart (SVG, no libraries)
-- Sentiment analysis of recent news (VADER, offline)
-- Technical signals (RSI, MACD, Bollinger Bands, moving averages)
-- Fundamental data (P/E ratio, EPS, market cap, revenue)
-- Risk metrics (Value-at-Risk, volatility)
-- Macro context (yield curve, inflation, unemployment)
-
----
-
-### 2. Market Snapshot
-**How to use:**
-1. Click **Refresh** to load current market data
-2. No input needed — shows major indices automatically
-
-**What you get:**
-- Live prices and daily change for S&P 500, Nasdaq, Dow Jones, Russell 2000
-- Fear & Greed style market breadth indicator
-- Top gainers and losers of the day
-- Sector performance overview
-
----
-
-### 3. Macro Indicators
-**How to use:**
-1. Click **Load Macro Data**
-2. Data loads automatically from FRED (Federal Reserve Economic Data — free)
-
-**What you get:**
-- US GDP growth rate
-- CPI inflation rate
-- Federal Funds Rate
-- Unemployment rate
-- 10-year Treasury yield
-- Yield curve (2Y vs 10Y spread) — inverted curve signals recession risk
-
----
-
-### 4. Portfolio Optimizer
-**How to use:**
-1. Type ticker symbols one by one, pressing **Enter** or **comma** after each (e.g. `AAPL` → Enter → `MSFT` → Enter → `GOOGL` → Enter)
-2. Set your **Risk Tolerance** using the slider (0 = Conservative, 1 = Aggressive)
-3. Choose your **Horizon** (1, 2, 3, or 5 years of historical data)
-4. Click **Optimize Portfolio**
-
-**What you get:**
-- Optimal allocation percentages for each ticker (Markowitz mean-variance optimization)
-- Expected annual return
-- Portfolio volatility
-- Sharpe ratio
-
-**Tips:**
-- Add at least 2 tickers (required)
-- Add 4–6 tickers for meaningful diversification
-- Conservative setting minimizes volatility; Aggressive maximizes return
-
----
-
-### 5. Scenario Simulation
-**How to use:**
-1. Describe a macroeconomic or geopolitical event in the text box (e.g. *"Federal Reserve raises interest rates by 100 basis points"*)
-2. Optionally use one of the preset example buttons
-3. Enter a ticker to simulate impact on (e.g. `AAPL`)
-4. Click **Simulate**
-
-**What you get:**
-- Predicted price impact (% change) on the ticker
-- Sector-level impact breakdown
-- Confidence score
-- Reasoning from the LLM
-
-**Note:** Requires Ollama running. Simulation takes 10–30 seconds.
-
----
-
-### 6. Alerts
-**How to use:**
-1. Enter a ticker symbol
-2. Set a **price threshold** (above or below)
-3. Set an optional **signal condition** (RSI overbought, MACD crossover, etc.)
-4. Click **Set Alert**
-
-**What you get:**
-- Alerts are stored in-session and checked against live prices
-- Triggered alerts show in the notification panel
-- Alerts can be cleared individually or all at once
-
----
-
-### 7. Backtesting
-**How to use:**
-1. Enter a ticker (e.g. `AAPL`)
-2. Set a **Start Date** and **End Date** for the backtest window
-3. Add trading signals — for each signal:
-   - Enter a **date** (must be within your start/end range, format: MM/DD/YYYY)
-   - Select **BUY** or **SELL**
-   - Click **Add Signal**
-4. First signal must be a **BUY**
-5. Click **Run Backtest**
-
-**What you get:**
-- Trade-by-trade table (entry date, exit date, entry price, exit price, P&L)
-- Portfolio value chart over time
-- Total return and final portfolio value
-
-**Example:**
-- Ticker: `AAPL`
-- Start: `01/01/2024`, End: `12/31/2024`
-- Signal 1: `03/15/2024` → BUY
-- Signal 2: `07/01/2024` → SELL
-
----
-
-### 8. Knowledge Graph
-**How to use:**
-1. Paste any financial news article, earnings report, or description of company relationships into the **Entity / News Text** box
-2. Optionally enter a **Disrupted Entity** (a company name) to highlight its impact connections
-3. Click **Extract Graph**
-
-**What you get:**
-- Visual graph showing entity nodes (companies, regulators, etc.) connected by labeled relationship arrows
-- Relationship Triples table listing every Subject → Relation → Object extracted
-- Confidence scores per relationship
-
-**Example text:**
-> *Apple acquired Intel's smartphone modem business. TSMC supplies chips to Apple and NVIDIA. The Federal Reserve raised interest rates, impacting tech stocks.*
-
-**Note:** Requires Ollama running. Extraction takes 15–40 seconds depending on text length.
-
----
-
-## Project Structure
-
-```
-stock_analyzer/
-├── app.py                  # Flask application, all API routes
-├── run_server.bat          # Windows startup script (recommended)
-├── requirements.txt
-├── templates/
-│   └── index.html          # Entire frontend (single file, vanilla JS)
-└── data/                   # Backend modules (one file per agent)
-    ├── stock.py            # yfinance price + fundamentals
-    ├── sentiment.py        # VADER news sentiment
-    ├── signals.py          # RSI, MACD, Bollinger Bands
-    ├── screener.py         # Buy/Sell/Hold rules engine
-    ├── risk.py             # VaR, volatility, risk metrics
-    ├── macro_data.py       # FRED economic indicators
-    ├── market_data.py      # Indices, sectors, gainers/losers
-    ├── scenario.py         # Ollama scenario simulation
-    ├── portfolio.py        # Markowitz optimization (scipy)
-    ├── backtester.py       # Signal-driven backtesting engine
-    ├── knowledge_graph.py  # Ollama entity extraction
-    ├── graph_reasoning.py  # BFS impact analysis
-    ├── meta_agent.py       # Aggregates all agent signals
-    ├── parallel_runner.py  # Concurrent agent execution
-    ├── notifier.py         # Alert management
-    ├── report.py           # Report generation
-    └── ...                 # RAG modules (vector_store, edgar_client, etc.)
+### /source example
+```json
+{"github": "torvalds"}
+{"pitch_deck": "We are raising Series A for our FinTech startup with 50,000 users."}
 ```
 
----
+### /score example
+```json
+{
+  "profile": {"name": "Ada", "sector": "FinTech", "stage": "Series A", ...},
+  "thesis_config": {"sectors": ["FinTech"], "stages": ["Series A"], "risk_appetite": "medium"}
+}
+```
 
 ## Running Tests
 
@@ -261,25 +79,25 @@ stock_analyzer/
 python -m pytest tests/ -v
 ```
 
-532+ tests across 21 modules. All tests use mocks — no live API calls required.
-
----
+180 tests collected. 170 pass. 10 pre-existing failures in retained RAG/graph modules (identical to source repo).
 
 ## Tech Stack
 
 | Component | Technology |
 |-----------|-----------|
 | Backend | Python 3.9 + Flask |
-| Frontend | Vanilla JS + HTML/CSS (no frameworks) |
 | LLM | Ollama (`llama3.2:3b`) — local, free |
-| Sentiment | VADER — offline, no API |
-| Stock data | yfinance — free |
-| Economic data | FRED API — free |
-| Portfolio math | NumPy + SciPy |
-| Vector store | ChromaDB + sentence-transformers |
+| Founder data | GitHub REST API v3 — unauthenticated, free |
+| PDF parsing | PyPDF2 |
+| Vector store | ChromaDB + sentence-transformers (retained, unused v1) |
 
 ---
 
-## License
+## Real API Calls vs. Stubbed/Synthetic
 
-MIT
+| Component | Status | Notes |
+|-----------|--------|-------|
+| GitHub repository search (`outbound_scan(source="github")`) | **Real API** | Unauthenticated GitHub `/search/repositories`; 60 req/hr limit; capped at 10 results per call |
+| Hacker News connector (`outbound_scan(source="hacker_news")`) | **Stub** | Returns empty list; real implementation would use Algolia HN Search API (no key required) at `https://hn.algolia.com/api/v1/search?tags=show_hn` |
+| ProductHunt connector (`outbound_scan(source="product_hunt")`) | **Stub** | Returns empty list; real implementation requires OAuth client token from ProductHunt developer portal |
+| Synthetic demo dataset (`load_sample_founders()`) | **Synthetic** | 18 pre-seeded fictional profiles in `data/sample_founders.json`; 3 sectors, 3 seeded contradictions; loaded as demo fallback when live scanning is slow or rate-limited |
