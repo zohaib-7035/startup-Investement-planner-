@@ -77,41 +77,6 @@ VC Brain is built on a structured, three-layered architecture (Memory, Intellige
 
 ---
 
-## 📹 Tech Video Script & Presentation Guide (5 Minutes)
-
-Use this structured outline to record a compelling hackathon submission video.
-
-### **0:00 - 0:45 | The Pitch & Hook (Why VC Brain?)**
-- **Action**: Share your screen showing the dashboard home screen or the "Sourcing" tab.
-- **Talking Points**: 
-  - *"Welcome to VC Brain. Traditional venture capital relies on who you know. We've built an AI-first operating system that changes this, scanning developer signals and pitch decks to back exceptional founders in 24 hours."*
-  - *"We ingest data from heterogeneous sources, score opportunities across independent axes, verify founder claims to produce a Trust Score, and display the full chain-of-thought logic behind every recommendation."*
-
-### **0:45 - 1:45 | Core Tech Stack & Architecture**
-- **Action**: Briefly show the code structure or the architecture diagram from the README.
-- **Talking Points**:
-  - *"The stack is built on Python and Flask for a modular, high-speed backend, calling local Ollama models (Llama 3.2) for NLP task extraction. The frontend is a responsive Vanilla CSS single-page dashboard."*
-  - *"Our backend executes a strict 4-stage pipeline: Sourcing, Screening, Diligence, and Decision. To prevent hallucinations, we use a hybrid approach: local LLMs perform text claim extraction, while pure Python rule-engines cross-reference facts against hard data."*
-
-### **1:45 - 3:00 | Deep Dive into the Pillars (Live Demo)**
-- **Action**: Click **Sourcing** in the sidebar. Highlight inbound vs. outbound candidates. Click **Screen** on a founder (e.g., Sofia Andersson / DeployKit).
-- **Talking Points**:
-  - ***Sourcing***: *"Here we have a unified inbox of inbound deck applications and outbound candidates found on GitHub. Notice the automated outreach templates generated when we activate an outbound founder."*
-  - ***Multi-Axis Screening***: *"Sofia has been scored separately across Founder (based on repo commits/contributors), Market, and Idea-vs-Market. Critically, we never average these scores, showing investors the exact details of any disagreements."*
-  - ***Thesis Engine***: *"We evaluate Sofia against our custom investment thesis. Investors can change sectors, stages, and check sizes in real-time under Thesis Config, and the pipeline filters profiles dynamically."*
-
-### **3:00 - 4:15 | Trust Scoring & Agentic Traceability**
-- **Action**: Navigate to the **Investment Memo** tab for the screened founder. Scroll down to show claim badges (`verified`, `contradicted`, `unverifiable`). Click **Show Reasoning** to open the CoT log.
-- **Talking Points**:
-  - ***Trust Score***: *"Every assertion the founder makes in their pitch deck is parsed by the LLM. Our Validator Agent checks this against GitHub data. For example, if a founder claims 50,000 active users, but their repo has only 3 stars, it is marked as `contradicted`."*
-  - ***No Fabrication***: *"If a founder doesn't disclose financials or a cap table, the system explicitly flags `[Not Disclosed]` rather than hallucinating text."*
-  - ***Traceability***: *"In the reasoning panel, you can see every single pipeline step. The system outputs which exact file, line, or repo signal was used to support a conclusion, providing complete transparency."*
-
-### **4:15 - 5:00 | Outro & Summary**
-- **Action**: Show the **Multi-Attribute Search** bar. Enter a query like *"technical founder, AI infra"* to show it filter profiles.
-- **Talking Points**:
-  - *"VC Brain demonstrates that venture capital can be data-driven, offline-safe, and transparent. Thank you for watching!"*
-
 ---
 
 ## 🚀 How to Run Locally
@@ -143,12 +108,3 @@ VC Brain has a robust automated test suite covering all modules:
 ```bash
 pytest tests/ -v
 ```
-
----
-
-## 🏆 Hackathon Evaluation Criteria Mapping
-
-- **Data Architecture (30%)**: Features robust ingestion of public GitHub REST endpoints and pitch deck texts, deduplicating records in a local persistent JSON memory.
-- **Intelligent Analysis (25%)**: Runs claim validation comparing unstructured deck text assertions to structural signals, flagging anomalies automatically.
-- **Investment Utility (30%)**: Produces investor-ready, structured memos with gap warnings, and outputs an interactive multi-attribute natural-language search bar.
-- **User Experience (15%)**: Styled using a premium, clean dark-slate CSS grid. Notion-level approachability with Bloomberg-level analytical depth.
