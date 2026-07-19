@@ -1,151 +1,388 @@
 """
-Investment Memo Generator.
+Investment Memo Generator v2.
 Produces a structured InvestmentMemo from typed pipeline inputs.
-Optional sections that lack source data are set to NOT_DISCLOSED — never fabricated.
-No LLM calls in this module (narrative polish is a future enhancement).
-Never raises.
+Every claim in the memo traces to a VerifiedClaim.
+Missing optional sections are flagged "not disclosed" — never fabricated.
+No LLM calls in this module. Never raises.
 """
-from dataclasses import dataclass
+import io
+import logging
+from dataclasses import dataclass, field
+from datetime import date
 from typing import List, Optional
+
 from data.founder_data import FounderProfile
 from data.risk_flags import RiskFlag
-from data.decision_engine import DecisionResult
+from data.scoring_engine import ScreeningResult
+from data.trust_score import Claim, VerifiedClaim
 
 NOT_DISCLOSED = "[Not Disclosed]"
+
+logger = logging.getLogger(__name__)
+
+
+# ---------------------------------------------------------------------------
+# Dataclasses
+# ---------------------------------------------------------------------------
+
+@dataclass
+class MemoSection:
+    title: str
+    content: str
+    claims: List[VerifiedClaim] = field(default_factory=list)
+    is_available: bool = True
+    unavailability_reason: Optional[str] = None
 
 
 @dataclass
 class InvestmentMemo:
-    # Required sections — always present
-    company_snapshot: str = ""
-    investment_hypotheses: str = ""
-    swot: str = ""
-    problem_and_product: str = ""
-    traction_and_kpis: str = ""
-    # Optional sections — default to NOT_DISCLOSED when data is absent
-    financials: str = NOT_DISCLOSED
-    cap_table: str = NOT_DISCLOSED
-    team_bios: str = NOT_DISCLOSED
+    company: str
+    date: str
+    required_sections: List[MemoSection]   # exactly 5
+    optional_sections: List[MemoSection]   # up to 6
+    overall_trust_score: float
 
 
-def _fmt_axes(decision: DecisionResult) -> str:
-    if not decision.axes:
-        return "No axis scores available."
+# ---------------------------------------------------------------------------
+# Internal helpers
+# ---------------------------------------------------------------------------
+
+def _gap_claim(section_name: str) -> VerifiedClaim:
+    return VerifiedClaim(
+        claim=Claim(
+            claim_text="not disclosed",
+            category="other",
+            confidence_score=1.0,
+            source_reference=section_name,
+        ),
+        status="unverifiable",
+        verification_confidence=1.0,
+        supporting_evidence=["Gap flagged: data absent from profile"],
+    )
+
+
+def _make_unavailable(title: str) -> MemoSection:
+    return MemoSection(
+        title=title,
+        content=NOT_DISCLOSED,
+        claims=[_gap_claim(title)],
+        is_available=False,
+        unavailability_reason="not disclosed",
+    )
+
+
+def _claims_for_categories(verified_claims: List[VerifiedClaim], categories: tuple) -> List[VerifiedClaim]:
+    return [vc for vc in verified_claims if vc.claim.category in categories]
+
+
+def _verified_only(vcs: List[VerifiedClaim]) -> List[VerifiedClaim]:
+    return [vc for vc in vcs if vc.status == "verified"]
+
+
+def _non_contradicted(vcs: List[VerifiedClaim]) -> List[VerifiedClaim]:
+    return [vc for vc in vcs if vc.status != "contradicted"]
+
+
+# ---------------------------------------------------------------------------
+# Section builders
+# ---------------------------------------------------------------------------
+
+def _build_company_snapshot(profile: FounderProfile, verified_claims: List[VerifiedClaim]) -> MemoSection:
+    company = profile.company or profile.name or "Unknown Company"
+    sector = profile.sector or "Unspecified"
+    stage = profile.stage or "Unspecified"
+    github = profile.github_url or NOT_DISCLOSED
+
+    lines = [
+        f"Company: {company}",
+        f"Sector: {sector}",
+        f"Stage: {stage}",
+        f"GitHub: {github}",
+    ]
+
+    team_vcs = _verified_only(_claims_for_categories(verified_claims, ("team",)))
+    for vc in team_vcs:
+        lines.append(f"Team: {vc.claim.claim_text} (verified, confidence {vc.verification_confidence:.0%})")
+
+    claims = team_vcs if team_vcs else [_gap_claim("company_snapshot")]
+    return MemoSection(title="Company Snapshot", content="\n".join(lines), claims=claims)
+
+
+def _build_investment_hypotheses(screening: ScreeningResult, verified_claims: List[VerifiedClaim]) -> MemoSection:
     lines = []
-    for axis in decision.axes:
-        lines.append(
-            f"- {axis.name}: score={axis.score:.2f}, trend={axis.trend} — {axis.rationale}"
+    claim_map: dict = {}
+    for vc in verified_claims:
+        claim_map.setdefault(vc.claim.category, []).append(vc)
+
+    for axis in (screening.founder_axis, screening.market_axis, screening.idea_vs_market_axis):
+        lines.append(f"**{axis.name}** (score: {axis.score:.0f}/100, trend: {axis.trend})")
+        for ev in (axis.evidence or []):
+            matched = None
+            for cat in ("traction", "team", "market_size", "revenue", "other"):
+                for vc in claim_map.get(cat, []):
+                    if vc.status == "verified" and any(
+                        word in vc.claim.claim_text.lower()
+                        for word in ev.lower().split()[:4]
+                        if len(word) > 3
+                    ):
+                        matched = vc
+                        break
+                if matched:
+                    break
+            status_tag = f"[{matched.status}, {matched.verification_confidence:.0%}]" if matched else "[unverified signal]"
+            lines.append(f"  - {ev} {status_tag}")
+
+    if not lines:
+        lines = ["No axis evidence available."]
+
+    all_vcs = [vc for vcs in claim_map.values() for vc in vcs]
+    claims = all_vcs[:5] if all_vcs else [_gap_claim("investment_hypotheses")]
+    return MemoSection(title="Investment Hypotheses", content="\n".join(lines), claims=claims)
+
+
+def _build_swot(screening: ScreeningResult, verified_claims: List[VerifiedClaim]) -> MemoSection:
+    verified = _verified_only(verified_claims)
+    contradicted = [vc for vc in verified_claims if vc.status == "contradicted"]
+    unverifiable_high = [
+        vc for vc in verified_claims
+        if vc.status == "unverifiable"
+        and any(f.severity == "high" for f in screening.risk_flags)
+    ]
+
+    strengths = []
+    for axis in (screening.founder_axis, screening.market_axis, screening.idea_vs_market_axis):
+        if axis.score >= 60:
+            strengths.append(f"{axis.name} axis: {axis.score:.0f}/100")
+    for vc in verified:
+        strengths.append(f"Verified claim: {vc.claim.claim_text[:80]}")
+
+    weaknesses = []
+    for f in screening.risk_flags:
+        if f.severity in ("medium", "high"):
+            weaknesses.append(f"[{f.severity.upper()}] {f.category}: {f.description}")
+    for vc in contradicted:
+        weaknesses.append(f"Contradicted claim: {vc.claim.claim_text[:80]} — {vc.contradiction_note or ''}")
+
+    opportunities = []
+    traction_vcs = _non_contradicted(_claims_for_categories(verified_claims, ("traction",)))
+    for vc in traction_vcs:
+        opportunities.append(f"{vc.claim.claim_text[:80]} ({vc.status})")
+    market_axis = screening.market_axis
+    opportunities.append(f"Market outlook: {market_axis.rationale or market_axis.name}")
+
+    threats = []
+    for f in screening.risk_flags:
+        if f.severity == "high":
+            threats.append(f"[HIGH] {f.category}: {f.description}")
+    for vc in unverifiable_high:
+        threats.append(f"Unverifiable claim in high-risk context: {vc.claim.claim_text[:60]}")
+
+    content_parts = [
+        "**Strengths:**\n" + ("\n".join(f"  - {s}" for s in strengths) or "  - None identified."),
+        "**Weaknesses:**\n" + ("\n".join(f"  - w" for w in weaknesses) or "  - None identified."),
+        "**Opportunities:**\n" + ("\n".join(f"  - {o}" for o in opportunities) or "  - None identified."),
+        "**Threats:**\n" + ("\n".join(f"  - {t}" for t in threats) or "  - None identified."),
+    ]
+    # fix: use the actual variable in weaknesses
+    content_parts[1] = "**Weaknesses:**\n" + ("\n".join(f"  - {w}" for w in weaknesses) or "  - None identified.")
+
+    claims = (verified + contradicted)[:5] or [_gap_claim("swot")]
+    return MemoSection(title="SWOT", content="\n\n".join(content_parts), claims=claims)
+
+
+def _build_problem_and_product(profile: FounderProfile, verified_claims: List[VerifiedClaim]) -> MemoSection:
+    relevant = _non_contradicted(_claims_for_categories(verified_claims, ("market_size", "other")))
+    relevant = [vc for vc in relevant if vc.claim.claim_text.lower() != "not disclosed"]
+
+    if relevant:
+        lines = [f"  - {vc.claim.claim_text} [{vc.status}, {vc.verification_confidence:.0%}]" for vc in relevant]
+        content = f"Problem & product signals:\n" + "\n".join(lines)
+        claims = relevant
+    else:
+        content = (
+            f"Insufficient data to characterise problem space for "
+            f"{profile.company or 'this company'} in the {profile.sector or 'unspecified'} sector."
         )
-    return "\n".join(lines)
+        claims = [_gap_claim("problem_and_product")]
+
+    return MemoSection(title="Problem & Product", content=content, claims=claims)
 
 
-def _fmt_risk_flags(risk_flags: List[RiskFlag]) -> str:
-    if not risk_flags:
-        return "No risk flags detected."
-    lines = []
-    for f in risk_flags:
-        lines.append(f"- [{f.severity.upper()}] {f.category}: {f.description}")
-    return "\n".join(lines)
+def _build_traction_and_kpis(verified_claims: List[VerifiedClaim]) -> MemoSection:
+    relevant = _claims_for_categories(verified_claims, ("traction", "revenue"))
+    relevant = [vc for vc in relevant if vc.claim.claim_text.lower() != "not disclosed"]
+
+    if not relevant:
+        return _make_unavailable("Traction & KPIs")
+
+    lines = [
+        f"  - {vc.claim.claim_text} [{vc.status}, confidence {vc.verification_confidence:.0%}]"
+        for vc in relevant
+    ]
+    return MemoSection(
+        title="Traction & KPIs",
+        content="Traction and KPI signals:\n" + "\n".join(lines),
+        claims=relevant,
+    )
 
 
-def _fmt_rules(matched: list, failed: list) -> str:
-    parts = []
-    if matched:
-        parts.append("Thesis rules MATCHED: " + ", ".join(matched))
-    if failed:
-        parts.append("Thesis rules FAILED: " + ", ".join(failed))
-    return " | ".join(parts) if parts else "No thesis rules evaluated."
+def _build_optional_section(title: str, categories: tuple, verified_claims: List[VerifiedClaim]) -> MemoSection:
+    relevant = [
+        vc for vc in verified_claims
+        if vc.claim.category in categories and vc.claim.claim_text.lower() != "not disclosed"
+    ]
+    if not relevant:
+        return _make_unavailable(title)
+    lines = [f"  - {vc.claim.claim_text} [{vc.status}]" for vc in relevant]
+    return MemoSection(title=title, content="\n".join(lines), claims=relevant)
 
+
+# ---------------------------------------------------------------------------
+# Public functions
+# ---------------------------------------------------------------------------
 
 def generate_memo(
     profile: FounderProfile,
-    thesis_result=None,
-    risk_flags: Optional[List[RiskFlag]] = None,
-    decision: Optional[DecisionResult] = None,
+    screening: ScreeningResult,
+    verified_claims: List[VerifiedClaim],
 ) -> InvestmentMemo:
     """
-    Generate an InvestmentMemo from structured pipeline inputs.
-    Required sections are always populated.
-    Optional sections are set to NOT_DISCLOSED when the source data is absent.
-    Never raises.
+    Assemble a structured InvestmentMemo from pipeline inputs.
+    No Ollama call. Never fabricates. Never raises.
     """
     try:
-        risk_flags = risk_flags or []
-        decision = decision or DecisionResult()
-        mi = decision.memo_inputs or {}
+        company = profile.company or profile.name or "Unknown Company"
+        today = str(date.today())
 
-        company_name = profile.company or profile.name or "Unknown Company"
-        sector       = profile.sector or "Unspecified"
-        stage        = profile.stage or "Unspecified"
-        github_url   = profile.github_url or NOT_DISCLOSED
+        required = [
+            _build_company_snapshot(profile, verified_claims),
+            _build_investment_hypotheses(screening, verified_claims),
+            _build_swot(screening, verified_claims),
+            _build_problem_and_product(profile, verified_claims),
+            _build_traction_and_kpis(verified_claims),
+        ]
 
-        # Required: Company Snapshot
-        company_snapshot = (
-            f"Company: {company_name}\n"
-            f"Sector: {sector}\n"
-            f"Stage: {stage}\n"
-            f"GitHub: {github_url}\n"
-            f"Overall Verdict: {decision.overall_verdict}\n"
-            f"Data Sources: {', '.join(profile.raw_sources) or 'none'}"
-        )
+        optional = [
+            _build_optional_section("Financials & Round Structure", ("revenue",), verified_claims),
+            _build_optional_section("Cap Table", ("other",), verified_claims),
+            _build_optional_section("Competition", ("market_size",), verified_claims),
+            _build_optional_section("Market Sizing", ("market_size",), verified_claims),
+            _make_unavailable("Due Diligence Log"),
+            _make_unavailable("Exit Perspective"),
+        ]
 
-        # Required: Investment Hypotheses
-        investment_hypotheses = (
-            f"Verdict: {decision.overall_verdict}\n"
-            f"{_fmt_rules(mi.get('matched_rules', []), mi.get('failed_rules', []))}\n"
-            f"Axis Scores:\n{_fmt_axes(decision)}"
-        )
-
-        # Required: SWOT (derived from signals and risk flags)
-        high_flags = [f for f in risk_flags if f.severity == "high"]
-        med_flags  = [f for f in risk_flags if f.severity == "medium"]
-        swot = (
-            f"Strengths: GitHub presence detected — {len(profile.raw_sources)} data sources ingested.\n"
-            f"Weaknesses: {_fmt_risk_flags(med_flags) if med_flags else 'None identified.'}\n"
-            f"Opportunities: Sector ({sector}) alignment with thesis.\n"
-            f"Threats: {_fmt_risk_flags(high_flags) if high_flags else 'None identified.'}"
-        )
-
-        # Required: Problem & Product
-        problem_and_product = (
-            f"Company {company_name} operates in the {sector} sector at {stage} stage.\n"
-            f"GitHub signals suggest: {', '.join(str(k) for k in (profile.key_signals or {}).keys()) or 'no observable signals'}."
-        )
-
-        # Required: Traction & KPIs
-        claimed_users = (profile.key_signals or {}).get("claimed_users")
-        total_stars   = (profile.key_signals or {}).get("total_stars")
-        traction_lines = []
-        if claimed_users is not None:
-            traction_lines.append(f"Claimed users: {claimed_users:,}")
-        if total_stars is not None:
-            traction_lines.append(f"GitHub stars (top {len(profile.raw_sources)} repos): {total_stars:,}")
-        high_risk_names = ", ".join(mi.get("high_risk_flags", []))
-        if high_risk_names:
-            traction_lines.append(f"High-severity flags: {high_risk_names}")
-        traction_and_kpis = "\n".join(traction_lines) if traction_lines else "No traction data available from sources ingested."
-
-        # Optional sections — only populated if data is present in memo_inputs
-        financials = mi.get("financials", NOT_DISCLOSED) or NOT_DISCLOSED
-        cap_table  = mi.get("cap_table", NOT_DISCLOSED) or NOT_DISCLOSED
-        team_bios  = mi.get("team_bios", NOT_DISCLOSED) or NOT_DISCLOSED
+        if verified_claims:
+            overall_trust = sum(vc.verification_confidence for vc in verified_claims) / len(verified_claims)
+        else:
+            overall_trust = 0.0
 
         return InvestmentMemo(
-            company_snapshot=company_snapshot,
-            investment_hypotheses=investment_hypotheses,
-            swot=swot,
-            problem_and_product=problem_and_product,
-            traction_and_kpis=traction_and_kpis,
-            financials=financials,
-            cap_table=cap_table,
-            team_bios=team_bios,
+            company=company,
+            date=today,
+            required_sections=required,
+            optional_sections=optional,
+            overall_trust_score=overall_trust,
         )
 
     except Exception:
-        return InvestmentMemo(
-            company_snapshot="Error generating memo.",
-            investment_hypotheses=NOT_DISCLOSED,
-            swot=NOT_DISCLOSED,
-            problem_and_product=NOT_DISCLOSED,
-            traction_and_kpis=NOT_DISCLOSED,
+        logger.exception("generate_memo failed — returning minimal fallback memo")
+        fallback_claim = _gap_claim("memo_generation_error")
+        fallback_section = MemoSection(
+            title="Error",
+            content="Memo generation encountered an error.",
+            claims=[fallback_claim],
         )
+        return InvestmentMemo(
+            company=profile.company or "Unknown",
+            date=str(date.today()),
+            required_sections=[fallback_section] * 5,
+            optional_sections=[],
+            overall_trust_score=0.0,
+        )
+
+
+def export_memo_markdown(memo: InvestmentMemo) -> str:
+    """Render InvestmentMemo to a markdown string. Never raises."""
+    try:
+        lines = [
+            f"# Investment Memo: {memo.company}",
+            f"Date: {memo.date}",
+            f"**Trust Score: {memo.overall_trust_score:.0%}**",
+            "",
+        ]
+
+        for section in memo.required_sections:
+            if not section.is_available:
+                lines.append(f"> **[{section.title}: {NOT_DISCLOSED}]**")
+            else:
+                lines.append(f"## {section.title}")
+                lines.append(section.content)
+            lines.append("")
+
+        for section in memo.optional_sections:
+            if not section.is_available:
+                lines.append(f"> **[{section.title}: {NOT_DISCLOSED}]**")
+            else:
+                lines.append(f"## {section.title}")
+                lines.append(section.content)
+            lines.append("")
+
+        # Traceability table — deduplicated by claim_text
+        lines.append("## Claim Traceability")
+        lines.append("| Claim | Category | Status | Confidence |")
+        lines.append("|-------|----------|--------|------------|")
+        seen: set = set()
+        all_vcs: List[VerifiedClaim] = []
+        for section in memo.required_sections + memo.optional_sections:
+            for vc in section.claims:
+                if vc.claim.claim_text not in seen:
+                    seen.add(vc.claim.claim_text)
+                    all_vcs.append(vc)
+        for vc in all_vcs:
+            claim_short = vc.claim.claim_text[:60].replace("|", "\\|")
+            lines.append(
+                f"| {claim_short} | {vc.claim.category} | {vc.status} | {vc.verification_confidence:.0%} |"
+            )
+
+        return "\n".join(lines)
+
+    except Exception:
+        return f"# Investment Memo: {getattr(memo, 'company', 'Unknown')}\n\n[Error rendering memo]"
+
+
+def export_memo_pdf(memo: InvestmentMemo) -> bytes:
+    """Render InvestmentMemo to PDF bytes via reportlab. Never raises — returns b'' on failure."""
+    try:
+        from reportlab.platypus import SimpleDocTemplate, Paragraph, Spacer
+        from reportlab.lib.styles import getSampleStyleSheet
+        from reportlab.lib.pagesizes import letter
+
+        buffer = io.BytesIO()
+        doc = SimpleDocTemplate(buffer, pagesize=letter)
+        styles = getSampleStyleSheet()
+        story = []
+
+        md_text = export_memo_markdown(memo)
+        for line in md_text.splitlines():
+            stripped = line.strip()
+            if not stripped:
+                story.append(Spacer(1, 8))
+                continue
+            if stripped.startswith("# "):
+                story.append(Paragraph(stripped[2:], styles["Title"]))
+            elif stripped.startswith("## "):
+                story.append(Paragraph(stripped[3:], styles["Heading2"]))
+            elif stripped.startswith("> **["):
+                story.append(Paragraph(stripped.lstrip("> *").rstrip("*]") or stripped, styles["Italic"]))
+            elif stripped.startswith("|"):
+                story.append(Paragraph(stripped, styles["Code"]))
+            else:
+                safe = stripped.replace("&", "&amp;").replace("<", "&lt;").replace(">", "&gt;")
+                story.append(Paragraph(safe, styles["Normal"]))
+
+        doc.build(story)
+        return buffer.getvalue()
+
+    except Exception:
+        logger.warning("export_memo_pdf failed — returning empty bytes", exc_info=True)
+        return b""
