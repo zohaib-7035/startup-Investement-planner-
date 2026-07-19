@@ -427,11 +427,15 @@ def run_full_screening(
 
         config = thesis_config or ThesisConfig()
         thesis_result = evaluate_founder(profile, config)
-        thesis_match = thesis_result.verdict == "PASS"
-        if thesis_match:
-            thesis_reason = ", ".join(thesis_result.matched_rules)
-        else:
-            thesis_reason = ", ".join(thesis_result.failed_rules)
+        if thesis_result.verdict == "PASS":
+            thesis_match = True
+            thesis_reason = "Matched: " + ", ".join(thesis_result.matched_rules)
+        elif thesis_result.verdict == "WATCHLIST":
+            thesis_match = True
+            thesis_reason = "No thesis constraints configured — all founders pass by default"
+        else:  # FAIL
+            thesis_match = False
+            thesis_reason = "Failed: " + (", ".join(thesis_result.failed_rules) or "thesis filter")
 
         return ScreeningResult(
             profile=profile,
