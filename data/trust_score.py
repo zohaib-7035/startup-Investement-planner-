@@ -293,6 +293,27 @@ def verify_claim(claim: Claim, available_evidence: list) -> VerifiedClaim:
                 supporting_evidence=["Gap flagged: data absent from profile"],
             )
 
+        src = claim.source_reference.lower()
+
+        # Claims derived directly from observed GitHub signals are verified facts,
+        # except claimed_users which is self-reported by the founder.
+        if src.startswith("key_signals.") and "claimed_users" not in src:
+            return VerifiedClaim(
+                claim=claim,
+                status="verified",
+                verification_confidence=0.95,
+                supporting_evidence=[f"Directly observed signal: {claim.source_reference}"],
+            )
+
+        # Profile metadata (sector, stage) is a known fact from the profile record.
+        if src.startswith("profile."):
+            return VerifiedClaim(
+                claim=claim,
+                status="verified",
+                verification_confidence=0.95,
+                supporting_evidence=[f"Confirmed profile field: {claim.source_reference}"],
+            )
+
         # Index signals by name for fast lookup
         signal_map = {
             item["signal"]: item
@@ -300,9 +321,8 @@ def verify_claim(claim: Claim, available_evidence: list) -> VerifiedClaim:
             if "signal" in item and "score" in item
         }
 
-        # ── Traction claims ────────────────────────────────────────────────
+        # ── Traction claims (self-reported numbers, e.g. claimed_users) ───
         if claim.category == "traction":
-            # Extract any large number from claim text
             num_match = re.search(r"\b(\d[\d,]*)\s*([KkMmBb]?)\s*(users?|customers?|downloads?)?", claim.claim_text)
             claimed_number = 0
             if num_match:
@@ -314,7 +334,6 @@ def verify_claim(claim: Claim, available_evidence: list) -> VerifiedClaim:
                 except ValueError:
                     claimed_number = 0
 
-            # Check star_growth OR total_stars (sample_founders.json uses total_stars)
             star_signal = signal_map.get("star_growth") or signal_map.get("total_stars")
             if star_signal is not None:
                 star_score = float(star_signal.get("score", 0))
@@ -330,7 +349,6 @@ def verify_claim(claim: Claim, available_evidence: list) -> VerifiedClaim:
                             "very low GitHub traction contradicts large user base claim."
                         ),
                     )
-                # Low claimed number with low star signal is consistent → unverifiable (no external proof)
                 return VerifiedClaim(
                     claim=claim,
                     status="unverifiable",
@@ -346,21 +364,6 @@ def verify_claim(claim: Claim, available_evidence: list) -> VerifiedClaim:
 
         # ── Team claims ────────────────────────────────────────────────────
         if claim.category == "team":
-            team_num_match = re.search(r"\b(\d+)\b", claim.claim_text)
-            claimed_team_size = int(team_num_match.group(1)) if team_num_match else None
-            contributor_signal = signal_map.get("contributor_count")
-            if contributor_signal is not None and claimed_team_size is not None:
-                signal_count = float(contributor_signal.get("score", 0))
-                # score is contributor_count value in the signal system
-                if abs(signal_count - claimed_team_size) <= 1:
-                    return VerifiedClaim(
-                        claim=claim,
-                        status="verified",
-                        verification_confidence=0.8,
-                        supporting_evidence=[
-                            f"contributor_count signal: {signal_count:.0f} — matches claimed team size of {claimed_team_size}"
-                        ],
-                    )
             return VerifiedClaim(
                 claim=claim,
                 status="unverifiable",
