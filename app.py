@@ -10,7 +10,9 @@ os.environ.setdefault("TOKENIZERS_PARALLELISM", "false")
 
 import dataclasses
 import datetime
+import json
 import logging
+import pathlib
 
 from flask import Flask, jsonify, render_template, request
 
@@ -28,6 +30,8 @@ logging.basicConfig(
 log = logging.getLogger("app")
 
 app = Flask(__name__)
+
+_THESIS_CONFIG_PATH = pathlib.Path(__file__).parent / "data" / "thesis_config.json"
 
 
 @app.errorhandler(400)
@@ -75,12 +79,44 @@ def _check_vader():
         return False
 
 
+def _load_thesis_config():
+    """Load ThesisConfig from disk, returning defaults if file absent or malformed."""
+    from data.thesis_engine import ThesisConfig
+    try:
+        if _THESIS_CONFIG_PATH.exists():
+            with open(_THESIS_CONFIG_PATH, encoding="utf-8") as f:
+                data = json.load(f)
+            valid_fields = {fld.name for fld in dataclasses.fields(ThesisConfig)}
+            return ThesisConfig(**{k: v for k, v in data.items() if k in valid_fields})
+    except Exception:
+        pass
+    return ThesisConfig()
+
+
+def _build_evidence(profile):
+    """Convert founder signals + key_signals into verify_claim()-compatible evidence list."""
+    from data.founder_signals import generate_founder_signals
+    signals = generate_founder_signals(profile)
+    evidence = [
+        {"signal": name, "score": sig.get("score") or 0, "direction": sig.get("direction", "unknown")}
+        for name, sig in signals.items()
+        if sig.get("score") is not None
+    ]
+    # Add total_stars directly — sample_founders.json uses this key; verify_claim checks it
+    ks = profile.key_signals or {}
+    if "total_stars" in ks:
+        if not any(e["signal"] == "total_stars" for e in evidence):
+            evidence.append({"signal": "total_stars", "score": ks["total_stars"], "direction": "unknown"})
+    return evidence
+
+
 # ── Routes ────────────────────────────────────────────────────────────────────
 
 @app.route("/")
 def index():
     today = datetime.date.today().isoformat()
-    return render_template("index.html", today=today)
+    one_year_ago = (datetime.date.today() - datetime.timedelta(days=365)).isoformat()
+    return render_template("index.html", today=today, one_year_ago=one_year_ago)
 
 
 @app.route("/api/status")
@@ -118,7 +154,120 @@ def knowledge_graph_route():
         return jsonify({"error": str(e)}), 500
 
 
-# ── VC Brain routes ───────────────────────────────────────────────────────────
+# ── VC Brain API routes ───────────────────────────────────────────────────────
+
+@app.route("/api/founders", methods=["GET"])
+def api_founders():
+    """Return all sample founders as a JSON list with their array index as founder_id."""
+    try:
+        from data.sourcing import load_sample_founders
+        founders = load_sample_founders()
+        result = []
+        for idx, profile in enumerate(founders):
+            ks = profile.key_signals or {}
+            result.append({
+                "founder_id": idx,
+                "name":    profile.name or "",
+                "company": profile.company or "",
+                "sector":  profile.sector or "",
+                "stage":   profile.stage or "",
+                "source":  ks.get("source", "inbound"),
+            })
+        return jsonify(result)
+    except Exception as e:
+        log.error("api_founders: %s", e, exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/screen/<int:idx>", methods=["POST"])
+def api_screen(idx):
+    """
+    Run the full VC Brain pipeline for the founder at position idx in sample_founders.json.
+    Returns: { screening, memo, reasoning_log, profile }
+    """
+    try:
+        from data.sourcing import load_sample_founders
+        founders = load_sample_founders()
+        if idx < 0 or idx >= len(founders):
+            return jsonify({"error": f"Founder index {idx} out of range (0–{len(founders)-1})"}), 404
+
+        profile = founders[idx]
+        thesis_config = _load_thesis_config()
+
+        from data.scoring_engine import run_full_screening
+        screening = run_full_screening(profile, thesis_config)
+
+        from data.trust_score import extract_claims, verify_claim
+        claims = extract_claims(profile)
+        evidence = _build_evidence(profile)
+        verified_claims = [verify_claim(c, evidence) for c in claims]
+
+        from data.memo_generator import generate_memo
+        memo = generate_memo(profile, screening, verified_claims)
+
+        from data.reasoning_log import build_screening_log
+        reasoning_log = build_screening_log(profile, screening, verified_claims, idx)
+
+        return jsonify({
+            "screening":     dataclasses.asdict(screening),
+            "memo":          dataclasses.asdict(memo),
+            "reasoning_log": dataclasses.asdict(reasoning_log),
+            "profile": {
+                "name":    profile.name or "",
+                "company": profile.company or "",
+                "sector":  profile.sector or "",
+                "stage":   profile.stage or "",
+                "source":  (profile.key_signals or {}).get("source", "inbound"),
+            },
+        })
+
+    except Exception as e:
+        log.error("api_screen idx=%s: %s", idx, e, exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/thesis", methods=["GET"])
+def api_thesis_get():
+    """Return current ThesisConfig (defaults if file absent)."""
+    try:
+        config = _load_thesis_config()
+        return jsonify(dataclasses.asdict(config))
+    except Exception as e:
+        log.error("api_thesis GET: %s", e, exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+@app.route("/api/thesis", methods=["POST"])
+def api_thesis_post():
+    """Validate and persist ThesisConfig to data/thesis_config.json."""
+    from data.thesis_engine import ThesisConfig
+    body = request.get_json(silent=True)
+    if not body or not isinstance(body, dict):
+        return jsonify({"error": "JSON body required"}), 400
+
+    valid_fields = {fld.name for fld in dataclasses.fields(ThesisConfig)}
+    unknown = set(body) - valid_fields
+    if unknown:
+        return jsonify({"error": f"Unknown fields: {sorted(unknown)}"}), 400
+
+    numeric_fields = {"check_size_min", "check_size_max", "min_ownership_pct"}
+    for fld in numeric_fields:
+        if fld in body and not isinstance(body[fld], (int, float)):
+            return jsonify({"error": f"Field '{fld}' must be numeric"}), 400
+
+    try:
+        config = ThesisConfig(**{k: v for k, v in body.items() if k in valid_fields})
+        _THESIS_CONFIG_PATH.parent.mkdir(parents=True, exist_ok=True)
+        with open(_THESIS_CONFIG_PATH, "w", encoding="utf-8") as f:
+            json.dump(dataclasses.asdict(config), f, indent=2)
+        log.info("Thesis config saved to %s", _THESIS_CONFIG_PATH)
+        return jsonify(dataclasses.asdict(config))
+    except Exception as e:
+        log.error("api_thesis POST: %s", e, exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+
+# ── Legacy VC Brain routes (deprecated — use /api/screen/<idx>) ───────────────
 
 @app.route("/source", methods=["POST"])
 def source():
@@ -135,7 +284,6 @@ def source():
             profile = ingest_pitch_deck(str(body["pitch_deck"]).strip())
         return jsonify(dataclasses.asdict(profile))
     except ImportError:
-        # TODO Story 2 — founder_data.py not yet implemented
         return jsonify({"status": "not implemented"}), 501
     except Exception as e:
         log.error("source: %s", e, exc_info=True)
@@ -144,94 +292,22 @@ def source():
 
 @app.route("/score", methods=["POST"])
 def score():
-    """Run three-axis scoring (Founder / Market / Idea-vs-Market) for a founder profile."""
-    body = request.get_json(silent=True) or {}
-    if "profile" not in body:
-        return jsonify({"error": "provide 'profile' key with a FounderProfile object"}), 400
-
-    try:
-        from data.founder_data import FounderProfile
-        from data.founder_signals import generate_founder_signals
-        from data.thesis_engine import ThesisConfig, evaluate_founder
-        from data.risk_flags import flag_risks
-        from data.decision_engine import (
-            compute_founder_axis, compute_market_axis, compute_idea_axis, make_decision
-        )
-        from data.parallel_runner import run_agents_parallel
-
-        profile = FounderProfile(**body["profile"])
-        thesis_config_data = body.get("thesis_config")
-        thesis_config = ThesisConfig(**thesis_config_data) if thesis_config_data else ThesisConfig()
-
-        agent_dispatch = {
-            "signals":      (generate_founder_signals, [profile], {}),
-            "thesis":       (evaluate_founder, [profile, thesis_config], {}),
-            "founder_axis": (compute_founder_axis, [profile], {}),
-            "market_axis":  (compute_market_axis, [profile], {}),
-            "idea_axis":    (compute_idea_axis, [profile], {}),
-        }
-        results = run_agents_parallel(agent_dispatch)
-
-        signals       = results.get("signals", {})
-        thesis_result = results.get("thesis", None)
-        risk_flags    = flag_risks(profile, signals)
-        decision      = make_decision(
-            results.get("founder_axis"),
-            results.get("market_axis"),
-            results.get("idea_axis"),
-            thesis_result,
-            risk_flags,
-        )
-
-        return jsonify({
-            "signals":      signals,
-            "thesis_result": dataclasses.asdict(thesis_result) if thesis_result else None,
-            "risk_flags":   [dataclasses.asdict(f) for f in risk_flags],
-            "decision":     dataclasses.asdict(decision),
-        })
-    except ImportError:
-        # TODO Story 3 — scoring modules not yet implemented
-        return jsonify({"status": "not implemented"}), 501
-    except Exception as e:
-        log.error("score: %s", e, exc_info=True)
-        return jsonify({"error": str(e)}), 500
+    """DEPRECATED — use POST /api/screen/<idx> instead."""
+    log.warning("/score is deprecated — callers should use POST /api/screen/<idx>")
+    return jsonify({
+        "error": "This endpoint is deprecated. Use POST /api/screen/<idx> for the full VC Brain screening pipeline.",
+        "docs": "POST /api/screen/<founder_index> — returns screening, memo, reasoning_log, and profile in one call.",
+    }), 410
 
 
 @app.route("/memo", methods=["POST"])
 def memo():
-    """Generate an Investment Memo from a scored founder profile."""
-    body = request.get_json(silent=True) or {}
-    required = ("profile", "thesis_result", "risk_flags", "decision")
-    missing = [k for k in required if k not in body]
-    if missing:
-        return jsonify({"error": f"missing required keys: {missing}"}), 400
-
-    try:
-        from data.founder_data import FounderProfile
-        from data.thesis_engine import ThesisResult
-        from data.risk_flags import RiskFlag
-        from data.decision_engine import DecisionResult, AxisScore
-        from data.memo_generator import generate_memo
-
-        profile       = FounderProfile(**body["profile"])
-        thesis_result = ThesisResult(**body["thesis_result"]) if body["thesis_result"] else None
-        risk_flags    = [RiskFlag(**f) for f in (body["risk_flags"] or [])]
-        dec_data      = body["decision"]
-        axes          = [AxisScore(**a) for a in dec_data.get("axes", [])]
-        decision      = DecisionResult(
-            axes=axes,
-            overall_verdict=dec_data.get("overall_verdict", ""),
-            memo_inputs=dec_data.get("memo_inputs", {}),
-        )
-
-        investment_memo = generate_memo(profile, thesis_result, risk_flags, decision)
-        return jsonify(dataclasses.asdict(investment_memo))
-    except ImportError:
-        # TODO Story 4 — memo_generator.py not yet implemented
-        return jsonify({"status": "not implemented"}), 501
-    except Exception as e:
-        log.error("memo: %s", e, exc_info=True)
-        return jsonify({"error": str(e)}), 500
+    """DEPRECATED — use POST /api/screen/<idx> instead."""
+    log.warning("/memo is deprecated — callers should use POST /api/screen/<idx>")
+    return jsonify({
+        "error": "This endpoint is deprecated. Use POST /api/screen/<idx> for the full VC Brain pipeline including memo generation.",
+        "docs": "POST /api/screen/<founder_index> — returns screening, memo, reasoning_log, and profile in one call.",
+    }), 410
 
 
 if __name__ == "__main__":
@@ -243,7 +319,7 @@ if __name__ == "__main__":
     debug     = os.environ.get("FLASK_DEBUG", "false").lower() == "true"
 
     print("\n" + "=" * 65)
-    print("  VC Brain — Startup Investment Intelligence")
+    print("  VC Brain — Agentic Founder Intelligence")
     print("=" * 65)
     print(f"  Ollama ({model}): {'OK — ready' if ollama_ok else 'NOT RUNNING — run: ollama serve'}")
     print(f"  VADER sentiment : {'OK' if vader_ok else 'MISSING — pip install vaderSentiment'}")

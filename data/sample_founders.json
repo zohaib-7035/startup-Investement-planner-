@@ -40,7 +40,7 @@
     "stage": "seed",
     "github_url": null,
     "key_signals": {
-      "source": "inbound",
+      "source": "outbound",
       "funnel_stage": "screening",
       "claimed_users": 1800,
       "total_stars": 210,

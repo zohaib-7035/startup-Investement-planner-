@@ -1,107 +1,138 @@
-# VC Brain — Startup Investment Intelligence
+# VC Brain — Agentic Founder Intelligence
 
-A multi-agent AI pipeline that sources, scores, and generates investment memos for startup founders.
-Repurposed from AI-Stock-Intelligence-Platform for the VC Brain hackathon.
-No paid APIs — runs locally using GitHub REST API (free/unauthenticated) and Ollama (local LLM).
+**An offline-safe, multi-agent pipeline that sources, screens, and generates evidence-backed investment memos for startup founders — with full agentic traceability showing exactly which data point drove each conclusion.**
 
 ---
 
-## What's Working vs. Stubbed
+## What VC Brain Does (and Does NOT Do)
 
-| Module | Status | Notes |
-|--------|--------|-------|
-| `data/founder_data.py` | **Working** | GitHub profile fetch (top-10 repos); pitch deck text/PDF ingestion with regex heuristics |
-| `data/founder_signals.py` | **Working** | 5 signals: commit_frequency, star_growth, contributor_count, recency, tech_stack_depth |
-| `data/thesis_engine.py` | **Working** | Configurable ThesisConfig; named-rule verdicts (PASS/FAIL/WATCHLIST) |
-| `data/risk_flags.py` | **Working** | 4 categories: solo_founder, stale_repo, missing_data, claim_contradiction |
-| `data/decision_engine.py` | **Stub axes** | AxisScore + DecisionResult implemented; founder/market/idea axis computations return 0.5 stub values |
-| `data/memo_generator.py` | **Working** | Required sections always present; optional sections default to "[Not Disclosed]" |
-| `data/parallel_runner.py` | **Working** | Generic dispatch dict interface; per-agent timeout + retry; no stock-specific code |
-| `data/market_context.py` | **Stub** | Public surface of macro_data.py preserved; returns empty dict |
-| `data/knowledge_graph.py` | **Retained** | Ollama triple extraction; system prompt is finance-flavoured (swap in Story 4) |
-| `data/graph_reasoning.py` | **Retained** | BFS impact analysis; domain-agnostic; ready for reuse |
-| `data/vector_store.py` | **Retained** | ChromaDB RAG; out of scope v1 |
-| `data/edgar_client.py` | **Retained** | SEC EDGAR filings; out of scope v1 |
-| `POST /source` | **Working** | Accepts `{"github": "username"}` or `{"pitch_deck": "text"}` |
-| `POST /score` | **Working** | Returns signals, thesis_result, risk_flags, decision |
-| `POST /memo` | **Working** | Returns InvestmentMemo JSON with [Not Disclosed] for absent optional sections |
+**Does:**
+- Source founders via inbound applications or outbound GitHub scans, unified in one UI
+- Score founders on three independent axes (Founder / Market / Idea-vs-Market) — axes are **never combined into a single score**
+- Generate investment memos where every claim is tagged as `verified`, `unverifiable`, or `contradicted` against real signals
+- Flag "not disclosed" sections explicitly rather than fabricating content
+- Produce a chain-of-thought reasoning log: each conclusion cites the exact data point that drove it
+- Run fully offline against synthetic demo profiles; Ollama only needed for claim extraction
 
-**Deleted (out of scope):** backtester, notifier, portfolio, scenario, market_data, openbb_client, meta_agent, report, stock, signals, screener, risk
+**Does NOT:**
+- Make final investment decisions — the human investor is always in the loop
+- Replace legal, financial, or technical due diligence
+- Guarantee accuracy of third-party data sources (GitHub signals are heuristic proxies)
+- Store or transmit any founder data externally
 
 ---
 
-## Installation
+## Architecture
+
+VC Brain evolved from an AI Stock Intelligence Platform (multi-agent pipeline using Ollama + FRED + Yahoo Finance). The agents were repurposed for founder discovery — the same parallel runner, evidence-chain pattern, and trust-score mechanism that tracked macro signals now tracks founder signals from GitHub.
+
+```
+┌─────────────────────────────────────────────────────────┐
+│                   Flask Dashboard (app.py)               │
+│  /api/founders  /api/screen/<idx>  /api/thesis           │
+└──────────┬───────────────────┬───────────────────────────┘
+           │                   │
+    ┌──────▼──────┐    ┌───────▼──────────────────┐
+    │  sourcing.py │    │    scoring_engine.py      │
+    │  inbound +   │    │  3-axis screening:        │
+    │  outbound    │    │  founder / market /       │
+    │  profiles    │    │  idea-vs-market           │
+    └─────────────┘    └───────────────────────────┘
+                               │
+               ┌───────────────┼──────────────────┐
+               │               │                  │
+    ┌──────────▼──┐  ┌─────────▼─────┐  ┌────────▼──────┐
+    │ trust_score │  │ memo_generator│  │ reasoning_log │
+    │ extract +   │  │ evidence-backed│  │ chain-of-thought│
+    │ verify claims│  │ memos with gap │  │ per conclusion │
+    │             │  │ flagging       │  │ data citation  │
+    └─────────────┘  └───────────────┘  └───────────────┘
+```
+
+**Key modules:**
+
+| Module | Responsibility |
+|--------|---------------|
+| `data/sourcing.py` | Load/scan inbound + outbound founder profiles |
+| `data/founder_signals.py` | 5 GitHub signals: commit frequency, star growth, contributor count, recency, tech stack depth |
+| `data/scoring_engine.py` | Three-axis screening; thesis matching; risk flags |
+| `data/thesis_engine.py` | Configurable ThesisConfig (sectors, stages, check size, risk appetite) |
+| `data/trust_score.py` | Claim extraction (LLM, offline fallback) + rule-based signal verification |
+| `data/memo_generator.py` | Investment memo generation; "not disclosed" gap flagging |
+| `data/reasoning_log.py` | Agentic traceability: chain-of-thought reasoning log with data citations |
+| `data/risk_flags.py` | Four risk categories: solo founder, stale repo, missing data, claim contradiction |
+
+---
+
+## How to Run
+
+### Prerequisites
+
+- Python 3.9+
+- [Ollama](https://ollama.ai) (only needed for claim extraction; all other features are offline-safe)
+
+### Setup
 
 ```bash
+git clone <repo>
+cd vc-brain
 pip install -r requirements.txt
-```
 
-Requires Ollama for the `/api/knowledge-graph` route:
-```bash
-ollama serve
+# Optional — for LLM-powered claim extraction
 ollama pull llama3.2:3b
+ollama serve
 ```
 
-## Running
+### Run the dashboard
 
 ```bash
 python app.py
-# → http://localhost:5000
-
- #* Running on all addresses (0.0.0.0)
- #* Running on http://127.0.0.1:5000
- #* Running on http://192.168.18.116:5000
 ```
 
-## API Endpoints
+Open `http://localhost:5000` — navigate to **Sourcing** in the sidebar to load demo founders.
 
-| Method | Path | Description |
-|--------|------|-------------|
-| `POST` | `/source` | Fetch founder profile from GitHub or pitch deck |
-| `POST` | `/score` | Run 3-axis scoring pipeline |
-| `POST` | `/memo` | Generate investment memo |
-| `GET` | `/api/status` | Health check (Ollama, VADER) |
-| `POST` | `/api/knowledge-graph` | Extract entity triples from text |
+### Environment variables (all optional)
 
-### /source example
-```json
-{"github": "torvalds"}
-{"pitch_deck": "We are raising Series A for our FinTech startup with 50,000 users."}
-```
-
-### /score example
-```json
-{
-  "profile": {"name": "Ada", "sector": "FinTech", "stage": "Series A", ...},
-  "thesis_config": {"sectors": ["FinTech"], "stages": ["Series A"], "risk_appetite": "medium"}
-}
-```
-
-## Running Tests
-
-```bash
-python -m pytest tests/ -v
-```
-
-180 tests collected. 170 pass. 10 pre-existing failures in retained RAG/graph modules (identical to source repo).
-
-## Tech Stack
-
-| Component | Technology |
-|-----------|-----------|
-| Backend | Python 3.9 + Flask |
-| LLM | Ollama (`llama3.2:3b`) — local, free |
-| Founder data | GitHub REST API v3 — unauthenticated, free |
-| PDF parsing | PyPDF2 |
-| Vector store | ChromaDB + sentence-transformers (retained, unused v1) |
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| `OLLAMA_URL` | `http://localhost:11434` | Ollama server URL |
+| `OLLAMA_MODEL` | `llama3.2:3b` | Model for claim extraction |
+| `FLASK_PORT` | `5000` | Dashboard port |
+| `FLASK_DEBUG` | `false` | Enable Flask debug mode |
 
 ---
 
-## Real API Calls vs. Stubbed/Synthetic
+## Demo Flow
 
-| Component | Status | Notes |
-|-----------|--------|-------|
-| GitHub repository search (`outbound_scan(source="github")`) | **Real API** | Unauthenticated GitHub `/search/repositories`; 60 req/hr limit; capped at 10 results per call |
-| Hacker News connector (`outbound_scan(source="hacker_news")`) | **Stub** | Returns empty list; real implementation would use Algolia HN Search API (no key required) at `https://hn.algolia.com/api/v1/search?tags=show_hn` |
-| ProductHunt connector (`outbound_scan(source="product_hunt")`) | **Stub** | Returns empty list; real implementation requires OAuth client token from ProductHunt developer portal |
-| Synthetic demo dataset (`load_sample_founders()`) | **Synthetic** | 18 pre-seeded fictional profiles in `data/sample_founders.json`; 3 sectors, 3 seeded contradictions; loaded as demo fallback when live scanning is slow or rate-limited |
+1. **Sourcing** — Load the 19 synthetic demo profiles (mix of inbound + outbound); note the `outbound` chip on GitHub-scanned founders
+2. **Screen a founder** — Click Screen on any row to run the full pipeline
+3. **Screening view** — See the three axes displayed separately with scores, trend arrows, and evidence bullets; check the thesis match result and risk flags
+4. **Memo view** — Every claim carries a `verified` / `unverifiable` / `contradicted` badge; "not disclosed" sections are flagged explicitly
+5. **Reasoning panel** — Expand "Show reasoning" on the Screening view to see the full chain-of-thought log
+
+**Demo highlights:**
+- **Priya Venkatesan / FinAI Labs** — inbound; `total_stars=92` vs. `claimed_users=48000` triggers a `contradicted` badge
+- **Devon Marsh / TractionMax** — `total_stars=3`, `recency=210 days`, claimed 200k users — high-severity contradiction
+- **Sofia Andersson / DeployKit** — outbound-sourced; strong commit signals
+
+---
+
+## Tests
+
+```bash
+pytest tests/ -v
+```
+
+Key test suites:
+
+| Suite | Tests | Coverage |
+|-------|-------|----------|
+| `test_reasoning_log.py` | 11 | ReasoningLog: axis steps, claim steps, gap filtering, placeholder sanitisation, ISO timestamps |
+| `test_scoring_engine.py` | 20+ | Three-axis scoring, FounderMemory persistence, thesis matching |
+| `test_trust_score.py` | 15+ | Claim extraction (mocked LLM), verify_claim signal matching, contradictions |
+| `test_memo_generator.py` | 10+ | Memo sections, gap flagging, "not disclosed" behaviour |
+| `test_thesis_engine.py` | 8+ | ThesisConfig rules, PASS/FAIL/WATCHLIST verdicts |
+| `test_risk_flags.py` | 8+ | All four risk categories and severity levels |
+| `test_sourcing.py` | 6+ | Inbound/outbound loading, source filtering |
+
+All tests run offline — no Ollama or GitHub API calls required.

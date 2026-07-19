@@ -244,14 +244,6 @@ def score_market_axis(profile: FounderProfile) -> AxisScore:
 # score_idea_vs_market_axis
 # ---------------------------------------------------------------------------
 
-_IDEA_OFFLINE_FALLBACK = AxisScore(
-    name="idea_vs_market",
-    score=50.0,
-    trend="stable",
-    rationale="LLM unavailable",
-    evidence=["LLM unavailable — rule-based fallback: sector/stage heuristic applied"],
-)
-
 _IDEA_PROMPT_TEMPLATE = """\
 You are a VC analyst assistant. Evaluate the idea-market fit for this startup.
 
@@ -270,29 +262,115 @@ Respond with ONLY a JSON object — no markdown, no explanation:
 }}"""
 
 
+def _idea_vs_market_rule_based(profile: FounderProfile) -> AxisScore:
+    """
+    Rich rule-based idea-vs-market scorer — fully offline, always returns meaningful results.
+    Uses market outlook (40%), execution signals (30%), and traction evidence (30%).
+    """
+    signals = generate_founder_signals(profile)
+    market = score_market_axis(profile)
+    ks = profile.key_signals or {}
+
+    # ── Market outlook (40%) ──────────────────────────────────────────────────
+    market_component = market.score * 0.40
+    market_label = "bullish" if market.score >= 70 else "neutral" if market.score >= 45 else "bearish"
+
+    # ── Execution signals (30%): commit velocity + repo freshness ─────────────
+    def _sig(name: str) -> float:
+        v = signals.get(name, {})
+        s = v.get("score") if v else None
+        return float(s) if s is not None else 50.0
+
+    commit_s  = _sig("commit_frequency")
+    recency_s = _sig("recency")
+    execution_score = (commit_s + recency_s) / 2
+    execution_component = execution_score * 0.30
+
+    # ── Traction evidence (30%): star growth + user/star coherence ────────────
+    star_s = _sig("star_growth")
+    claimed_users = int(ks.get("claimed_users") or 0)
+    total_stars   = int(ks.get("total_stars") or ks.get("recency_days") or 0)
+
+    traction_score = star_s
+    traction_note = ""
+    if claimed_users > 50_000 and total_stars < 10:
+        traction_score = max(8.0, traction_score - 35)
+        traction_note = " — user/star ratio anomaly: contradiction risk HIGH"
+    elif claimed_users > 10_000 and total_stars > 500:
+        traction_score = min(95.0, traction_score + 12)
+        traction_note = " — user count corroborated by star momentum"
+    elif total_stars > 1000:
+        traction_score = min(95.0, traction_score + 8)
+        traction_note = " — strong open-source adoption signal"
+    elif total_stars == 0 and claimed_users == 0:
+        traction_score = max(15.0, traction_score - 15)
+        traction_note = " — no measurable traction signal"
+    else:
+        traction_note = " — early traction phase"
+    traction_component = traction_score * 0.30
+
+    combined = market_component + execution_component + traction_component
+    combined = max(8.0, min(95.0, combined))
+
+    # ── Trend ─────────────────────────────────────────────────────────────────
+    if execution_score > 65 and market.score >= 70:
+        trend = "improving"
+    elif execution_score < 30 or (claimed_users > 50_000 and total_stars < 10):
+        trend = "declining"
+    else:
+        trend = "stable"
+
+    # ── Pivot optionality ─────────────────────────────────────────────────────
+    contrib_s = _sig("contributor_count")
+    td_sig = signals.get("tech_stack_depth", {})
+    stack_s = float(td_sig.get("score") or 50) if td_sig else 50.0
+    pivot_potential = (contrib_s + stack_s) / 2
+    pivot_label = "HIGH" if pivot_potential > 60 else "MEDIUM" if pivot_potential > 35 else "LOW"
+
+    exec_label = "strong" if execution_score > 65 else "moderate" if execution_score > 40 else "weak"
+    traction_label = ("contradicted" if claimed_users > 50_000 and total_stars < 10
+                      else "strong" if total_stars > 1000 or (claimed_users > 5000 and total_stars > 100)
+                      else "emerging")
+
+    evidence = [
+        f"Market outlook: {market_label} sector ({market.score:.0f}/100) — contributes {market_component:.0f}pts to fit score",
+        f"Execution signals: commit_velocity={commit_s:.0f}/100, repo_freshness={recency_s:.0f}/100 → {exec_label} cadence (avg {execution_score:.0f}/100)",
+        f"Traction evidence: star_score={star_s:.0f}/100{traction_note}",
+        f"Pivot optionality: team_depth={contrib_s:.0f}/100, tech_breadth={stack_s:.0f}/100 → {pivot_label}",
+    ]
+    rationale = (
+        f"Idea-market fit {combined:.0f}/100: "
+        f"{market_label} market × {exec_label} execution × {traction_label} traction "
+        f"→ pivot potential {pivot_label}"
+    )
+    return AxisScore(
+        name="idea_vs_market",
+        score=combined,
+        trend=trend,
+        rationale=rationale,
+        evidence=evidence,
+    )
+
+
 def score_idea_vs_market_axis(profile: FounderProfile) -> AxisScore:
     """
-    Score the Idea-vs-Market axis via Ollama LLM call.
-    Falls back to score=50, trend='stable' if Ollama is unreachable or returns bad JSON.
+    Score Idea-vs-Market axis. Tries Ollama for richer narrative; always falls back
+    to the rich rule-based scorer (never the stub 50/stable).
     """
     try:
         market = score_market_axis(profile)
-        market_rating = market.rationale
-
         signals_summary = json.dumps(
             {k: v.get("score") for k, v in generate_founder_signals(profile).items()}
         )
-
         prompt = _IDEA_PROMPT_TEMPLATE.format(
             sector=profile.sector or "unknown",
             stage=profile.stage or "unknown",
             signals_summary=signals_summary,
-            market_rating=market_rating,
+            market_rating=market.rationale,
         )
-
         content = _call_ollama([{"role": "user", "content": prompt}])
         if content is None:
-            return _IDEA_OFFLINE_FALLBACK
+            return _idea_vs_market_rule_based(profile)
 
         parsed = json.loads(_strip_fences(content))
         output = IdeaVsMarketOutput(
@@ -305,12 +383,12 @@ def score_idea_vs_market_axis(profile: FounderProfile) -> AxisScore:
         return AxisScore(
             name="idea_vs_market",
             score=float(output.combined_score),
-            trend="stable",
+            trend="improving" if output.combined_score > 65 else "declining" if output.combined_score < 40 else "stable",
             rationale=output.rationale,
             evidence=output.evidence,
         )
     except Exception:
-        return _IDEA_OFFLINE_FALLBACK
+        return _idea_vs_market_rule_based(profile)
 
 
 # ---------------------------------------------------------------------------

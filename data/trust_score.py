@@ -165,10 +165,87 @@ def _gap_flag_claims(existing_claims: List[Claim], profile: FounderProfile) -> L
 # Public functions
 # ---------------------------------------------------------------------------
 
+def _synthesize_signal_claims(profile: FounderProfile) -> List[Claim]:
+    """
+    Build structured Claim objects from key_signals data.
+    Gives the memo meaningful content even when no pitch deck text is available.
+    """
+    ks = profile.key_signals or {}
+    company = profile.company or profile.name or "the company"
+    claims: List[Claim] = []
+
+    claimed_users = ks.get("claimed_users")
+    if claimed_users and int(claimed_users) > 0:
+        claims.append(Claim(
+            claim_text=f"{company} has {int(claimed_users):,} active users on the platform",
+            category="traction",
+            confidence_score=0.80,
+            source_reference="key_signals.claimed_users",
+        ))
+
+    total_stars = ks.get("total_stars")
+    if total_stars is not None and int(total_stars) > 0:
+        claims.append(Claim(
+            claim_text=f"{company} GitHub repository has {int(total_stars):,} stars",
+            category="traction",
+            confidence_score=0.95,
+            source_reference="key_signals.total_stars",
+        ))
+
+    commit_freq = ks.get("commit_frequency")
+    if commit_freq and float(commit_freq) > 0:
+        claims.append(Claim(
+            claim_text=f"Engineering team commits {float(commit_freq):.1f}× per week on average",
+            category="team",
+            confidence_score=0.90,
+            source_reference="key_signals.commit_frequency",
+        ))
+
+    contributor_count = ks.get("contributor_count")
+    if contributor_count and int(contributor_count) > 1:
+        claims.append(Claim(
+            claim_text=f"Project has {int(contributor_count)} active contributors on GitHub",
+            category="team",
+            confidence_score=0.90,
+            source_reference="key_signals.contributor_count",
+        ))
+
+    recency = ks.get("recency")
+    recency_days = ks.get("recency_days")
+    last_push = recency or recency_days
+    if last_push is not None:
+        days = int(last_push)
+        if days <= 7:
+            label = f"last pushed {days} day{'s' if days != 1 else ''} ago — actively maintained"
+        elif days <= 30:
+            label = f"last pushed {days} days ago — recently active"
+        else:
+            label = f"last pushed {days} days ago — low recent activity"
+        claims.append(Claim(
+            claim_text=f"{company} repository {label}",
+            category="traction",
+            confidence_score=0.95,
+            source_reference="key_signals.recency",
+        ))
+
+    sector = profile.sector
+    stage = profile.stage
+    if sector:
+        claims.append(Claim(
+            claim_text=f"{company} operates in the {sector} sector at {stage or 'unspecified'} stage",
+            category="market_size",
+            confidence_score=0.95,
+            source_reference="profile.sector",
+        ))
+
+    return claims
+
+
 def extract_claims(profile: FounderProfile) -> List[Claim]:
     """
     Extract structured claims from profile.raw_sources text using Ollama.
-    Offline fallback: returns only deterministic gap-flag claims.
+    Always supplements with signal-derived claims from key_signals.
+    Offline fallback: signal claims + gap flags only.
     Never raises.
     """
     try:
@@ -183,12 +260,18 @@ def extract_claims(profile: FounderProfile) -> List[Claim]:
             if raw:
                 llm_claims.extend(_parse_claims_response(raw))
 
-        gap_claims = _gap_flag_claims(llm_claims, profile)
-        return llm_claims + gap_claims
+        signal_claims = _synthesize_signal_claims(profile)
+        # Deduplicate: drop signal claim if LLM already extracted a claim with same category + similar text
+        llm_cats = {c.claim_text.lower()[:40] for c in llm_claims}
+        unique_signal = [c for c in signal_claims if c.claim_text.lower()[:40] not in llm_cats]
+
+        all_claims = llm_claims + unique_signal
+        gap_claims = _gap_flag_claims(all_claims, profile)
+        return all_claims + gap_claims
     except Exception:
-        # Full offline fallback — return only gap-flag claims
         try:
-            return _gap_flag_claims([], profile)
+            sig = _synthesize_signal_claims(profile)
+            return sig + _gap_flag_claims(sig, profile)
         except Exception:
             return []
 

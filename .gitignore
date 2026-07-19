@@ -45,5 +45,6 @@ desktop.ini
 *.env.*
 secrets.py
 
-# Runtime data store — created on first run, not committed
+# Runtime data stores — created at runtime, not committed
 data/founder_memory.json
+data/thesis_config.json

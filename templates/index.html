@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>AI Stock Intelligence</title>
+<title>VC Brain — Founder Intelligence</title>
 <style>
 /* ── Design tokens ── */
 :root {
@@ -490,6 +490,80 @@ input[type=range]::-webkit-slider-thumb{appearance:none;width:15px;height:15px;
   border:1px solid var(--b1)}
 
 
+/* ══ VC BRAIN PANELS ════════════════════════════════ */
+.founder-list{display:flex;flex-direction:column;gap:8px}
+.founder-row{
+  display:flex;align-items:center;gap:10px;
+  padding:10px 12px;border-radius:8px;
+  background:var(--s2);border:1px solid var(--b1);cursor:pointer;
+  transition:border-color .15s}
+.founder-row:hover{border-color:var(--accent)}
+.founder-row-info{flex:1;min-width:0}
+.founder-row-name{font-size:13px;font-weight:600;color:var(--tx)}
+.founder-row-co{font-size:11px;color:var(--muted)}
+.founder-row-meta{font-size:10px;color:var(--dim);margin-top:2px}
+.founder-row-action{flex-shrink:0}
+
+/* Axis cards */
+.axis-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:10px;margin-bottom:10px}
+.axis-card{background:var(--s2);border:1px solid var(--b1);border-radius:10px;padding:12px 14px}
+.axis-card-name{font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:4px}
+.axis-card-score{font-size:28px;font-weight:800;color:var(--tx);line-height:1}
+.axis-card-trend{font-size:11px;margin-top:2px}
+.axis-card-ev{font-size:10px;color:var(--dim);margin-top:8px;line-height:1.5}
+
+/* Trust badges */
+.badge-verified{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;
+  padding:2px 7px;border-radius:20px;background:var(--green);color:#fff;text-transform:uppercase;letter-spacing:.05em}
+.badge-unverifiable{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;
+  padding:2px 7px;border-radius:20px;background:var(--amber);color:#000;text-transform:uppercase;letter-spacing:.05em}
+.badge-contradicted{display:inline-flex;align-items:center;gap:3px;font-size:9px;font-weight:700;
+  padding:2px 7px;border-radius:20px;background:var(--red);color:#fff;text-transform:uppercase;letter-spacing:.05em}
+
+/* Source chips */
+.chip-inbound{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;
+  background:rgba(138,122,106,.18);color:var(--muted);text-transform:uppercase;letter-spacing:.05em;border:1px solid var(--dim)}
+.chip-outbound{display:inline-block;font-size:9px;font-weight:700;padding:2px 7px;border-radius:20px;
+  background:rgba(59,130,246,.15);color:var(--blue);text-transform:uppercase;letter-spacing:.05em;border:1px solid rgba(59,130,246,.3)}
+
+/* Reasoning panel */
+details.reasoning-panel{background:rgba(184,150,106,.06);border:1px solid rgba(184,150,106,.2);
+  border-radius:8px;margin-top:12px}
+details.reasoning-panel summary{
+  padding:9px 12px;cursor:pointer;font-size:11px;font-weight:600;color:var(--accent);
+  display:flex;align-items:center;gap:6px;list-style:none}
+details.reasoning-panel summary::-webkit-details-marker{display:none}
+details.reasoning-panel summary::before{content:'▶';font-size:8px;transition:transform .15s;flex-shrink:0}
+details.reasoning-panel[open] summary::before{transform:rotate(90deg)}
+.reasoning-steps{padding:8px 12px 12px}
+.reasoning-step{display:flex;gap:10px;padding:7px 0;border-bottom:1px solid rgba(184,150,106,.1);font-size:11px}
+.reasoning-step:last-child{border-bottom:none}
+.step-num{flex-shrink:0;width:18px;height:18px;border-radius:50%;
+  background:rgba(184,150,106,.15);color:var(--accent);font-size:9px;font-weight:800;
+  display:flex;align-items:center;justify-content:center}
+.step-body{flex:1;min-width:0}
+.step-agent{font-size:9px;font-weight:700;color:var(--accent);text-transform:uppercase;letter-spacing:.06em}
+.step-conclusion{font-size:11px;color:var(--tx);margin:1px 0}
+.step-dp{font-size:10px;color:var(--dim);line-height:1.4}
+.step-conf{font-size:9px;color:var(--muted)}
+
+/* Claim rows in memo */
+.claim-row{display:flex;align-items:flex-start;gap:8px;padding:7px 0;
+  border-bottom:1px solid rgba(184,150,106,.08);font-size:12px}
+.claim-row:last-child{border-bottom:none}
+.claim-text{flex:1;line-height:1.5}
+.claim-badge-wrap{flex-shrink:0;padding-top:2px}
+
+/* Memo block */
+.memo-section{margin-bottom:14px}
+.memo-section-hd{font-size:10px;font-weight:700;color:var(--muted);text-transform:uppercase;
+  letter-spacing:.07em;margin-bottom:6px;padding-bottom:5px;border-bottom:1px solid var(--b1)}
+.memo-body{font-size:12px;line-height:1.7;color:var(--tx)}
+
+/* Thesis form */
+.thesis-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+@media(max-width:540px){.thesis-grid{grid-template-columns:1fr}}
+
 /* ══ KNOWLEDGE GRAPH PANEL ═══════════════════════════ */
 .kg-graph-wrap{background:var(--s2);border-radius:10px;overflow:hidden;
   border:1px solid var(--b1)}
@@ -518,7 +592,7 @@ input[type=range]::-webkit-slider-thumb{appearance:none;width:15px;height:15px;
 
 <!-- ═══════════════ SIDEBAR ═══════════════ -->
 <nav class="sidebar" role="navigation" aria-label="Main">
-  <div class="sb-brand" title="AI Stock Intelligence">A</div>
+  <div class="sb-brand" title="VC Brain — Founder Intelligence">VC</div>
   <div class="sb-nav">
     <button class="sb-item active" id="sb-analysis" data-tip="Stock Analysis"
       onclick="goPanel('analysis')" aria-label="Stock Analysis">📈</button>
@@ -536,6 +610,15 @@ input[type=range]::-webkit-slider-thumb{appearance:none;width:15px;height:15px;
       onclick="goPanel('backtest')" aria-label="Backtesting">⏱</button>
     <button class="sb-item" id="sb-kg" data-tip="Knowledge Graph"
       onclick="goPanel('kg')" aria-label="Knowledge Graph">⬡</button>
+    <div style="height:1px;width:32px;background:var(--b1);margin:6px 0"></div>
+    <button class="sb-item" id="sb-sourcing" data-tip="Founder Sourcing"
+      onclick="showSourcing()" aria-label="Founder Sourcing">🔍</button>
+    <button class="sb-item" id="sb-screening" data-tip="Screening"
+      onclick="goPanel('screening')" aria-label="Screening">🧪</button>
+    <button class="sb-item" id="sb-memo" data-tip="Investment Memo"
+      onclick="goPanel('memo')" aria-label="Investment Memo">📋</button>
+    <button class="sb-item" id="sb-thesis" data-tip="Thesis Config"
+      onclick="showThesis()" aria-label="Thesis Config">⚙</button>
   </div>
   <div class="sb-footer">
     <button class="sb-item" data-tip="About" style="font-size:14px"
@@ -547,7 +630,7 @@ input[type=range]::-webkit-slider-thumb{appearance:none;width:15px;height:15px;
 <header class="topbar">
   <div>
     <div class="tb-title" id="page-title">Stock Analysis</div>
-    <div class="tb-sub">Multi-Agent AI Pipeline · Free &amp; Local</div>
+    <div class="tb-sub">VC Brain — Agentic Founder Intelligence · Local &amp; Offline-Safe</div>
   </div>
   <div class="tb-right" id="status-bar"></div>
 </header>
@@ -899,6 +982,118 @@ input[type=range]::-webkit-slider-thumb{appearance:none;width:15px;height:15px;
     </div>
   </div>
 
+  <!-- ─── SOURCING ─── -->
+  <div class="panel" id="panel-sourcing">
+    <div class="split">
+      <div class="sticky">
+        <div class="card">
+          <div class="card-hd"><span class="card-title">Founder Sourcing</span></div>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:12px">
+            Inbound applications and outbound GitHub-scanned founders in one unified list.
+            Click <strong>Screen</strong> to run the full VC Brain pipeline.
+          </p>
+          <div style="display:flex;gap:8px;align-items:center;margin-bottom:12px">
+            <button class="btn" onclick="loadFounders()" aria-label="Refresh founder list">↻ Refresh</button>
+            <button class="btn" id="btn-toggle-source" onclick="toggleSource(this)"
+              aria-pressed="false" aria-label="Show all sources">All sources</button>
+          </div>
+          <div id="sourcing-results"><div class="ok-box">Loading founders…</div></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── SCREENING ─── -->
+  <div class="panel" id="panel-screening">
+    <div class="split">
+      <div class="sticky">
+        <div class="card">
+          <div class="card-hd"><span class="card-title" id="screening-founder-name">Screening</span></div>
+          <div id="screening-results">
+            <div class="ok-box">Select a founder from the Sourcing panel to run screening.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── MEMO ─── -->
+  <div class="panel" id="panel-memo">
+    <div class="split">
+      <div class="sticky">
+        <div class="card">
+          <div class="card-hd">
+            <span class="card-title">Investment Memo</span>
+            <span id="memo-founder-badge" style="font-size:10px;color:var(--muted)"></span>
+          </div>
+          <div id="memo-results">
+            <div class="ok-box">Run screening to generate an investment memo.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ─── THESIS CONFIG ─── -->
+  <div class="panel" id="panel-thesis">
+    <div class="split">
+      <div class="sticky">
+        <div class="card">
+          <div class="card-hd"><span class="card-title">Thesis Configuration</span></div>
+          <p style="font-size:11px;color:var(--muted);margin-bottom:14px">
+            Set your investment thesis. These filters are applied during founder screening.
+          </p>
+          <form id="thesis-form" onsubmit="submitThesis(event)" novalidate>
+            <div class="thesis-grid">
+              <div class="field">
+                <label for="th-sectors">Sectors (comma-separated)</label>
+                <input class="inp" type="text" id="th-sectors" placeholder="AI/ML, FinTech, SaaS"
+                  aria-label="Target sectors"/>
+              </div>
+              <div class="field">
+                <label for="th-stages">Stages (comma-separated)</label>
+                <input class="inp" type="text" id="th-stages" placeholder="pre-seed, seed"
+                  aria-label="Target stages"/>
+              </div>
+              <div class="field">
+                <label for="th-geos">Geographies (comma-separated)</label>
+                <input class="inp" type="text" id="th-geos" placeholder="US, EU, Global"
+                  aria-label="Target geographies"/>
+              </div>
+              <div class="field">
+                <label for="th-risk">Risk Appetite</label>
+                <select class="sel" id="th-risk" aria-label="Risk appetite">
+                  <option value="low">Low</option>
+                  <option value="medium" selected>Medium</option>
+                  <option value="high">High</option>
+                </select>
+              </div>
+              <div class="field">
+                <label for="th-min">Min Check Size ($)</label>
+                <input class="inp" type="number" id="th-min" placeholder="50000" min="0"
+                  aria-label="Minimum check size in dollars"/>
+              </div>
+              <div class="field">
+                <label for="th-max">Max Check Size ($)</label>
+                <input class="inp" type="number" id="th-max" placeholder="2000000" min="0"
+                  aria-label="Maximum check size in dollars"/>
+              </div>
+              <div class="field">
+                <label for="th-own">Min Ownership %</label>
+                <input class="inp" type="number" id="th-own" placeholder="5.0" min="0" max="100" step="0.1"
+                  aria-label="Minimum ownership percentage"/>
+              </div>
+            </div>
+            <div style="margin-top:14px;display:flex;gap:8px;align-items:center">
+              <button class="btn" type="submit" aria-label="Save thesis configuration">Save Thesis</button>
+              <span id="thesis-status" style="font-size:11px;color:var(--muted)"></span>
+            </div>
+          </form>
+        </div>
+      </div>
+    </div>
+  </div>
+
 </main><!-- /content -->
 
 <!-- ═══════════════ BOTTOM NAV (mobile) ═══════════════ -->
@@ -927,18 +1122,33 @@ input[type=range]::-webkit-slider-thumb{appearance:none;width:15px;height:15px;
   <button class="bn-item" id="bn-kg" onclick="goPanel('kg')">
     <span class="bn-icon">⬡</span><span>Graph</span>
   </button>
+  <button class="bn-item" id="bn-sourcing" onclick="showSourcing()">
+    <span class="bn-icon">🔍</span><span>Sourcing</span>
+  </button>
+  <button class="bn-item" id="bn-screening" onclick="goPanel('screening')">
+    <span class="bn-icon">🧪</span><span>Screen</span>
+  </button>
+  <button class="bn-item" id="bn-memo" onclick="goPanel('memo')">
+    <span class="bn-icon">📋</span><span>Memo</span>
+  </button>
+  <button class="bn-item" id="bn-thesis" onclick="showThesis()">
+    <span class="bn-icon">⚙</span><span>Thesis</span>
+  </button>
 </nav>
 
 <script>
 /* ════════════════════════════════════════════
    CONSTANTS
 ════════════════════════════════════════════ */
-const PANELS = ['analysis','market','macro','portfolio','scenario','alerts','backtest','kg'];
+const PANELS = ['analysis','market','macro','portfolio','scenario','alerts','backtest','kg',
+                 'sourcing','screening','memo','thesis'];
 const PAGE_TITLES = {
   analysis:'Stock Analysis', market:'Market Snapshot',
   macro:'Macro Indicators', portfolio:'Portfolio Optimizer',
   scenario:'Scenario Simulation', alerts:'Alerts',
-  backtest:'Backtesting', kg:'Knowledge Graph'
+  backtest:'Backtesting', kg:'Knowledge Graph',
+  sourcing:'Founder Sourcing', screening:'Screening',
+  memo:'Investment Memo', thesis:'Thesis Config'
 };
 const EXAMPLES = [
   "United States introduces new semiconductor export restrictions to China, targeting advanced GPUs and AI chips.",
@@ -968,6 +1178,7 @@ function goPanel(name){
   if(name==='market' && !_mktLoaded) loadMarket();
   if(name==='macro'  && !_macroLoaded) loadMacro();
   if(name==='alerts') loadAlertHistory();
+  if(name==='thesis') loadThesis();
 }
 
 /* ════════════════════════════════════════════
@@ -1891,6 +2102,320 @@ function renderKg(data){
         </table></div></div>
     </div>
     ${impactHtml}`;
+}
+
+/* ════════════════════════════════════════════
+   VC BRAIN — SOURCING
+════════════════════════════════════════════ */
+let _foundersCache = null;
+let _sourceFilter = null; // null=all, 'inbound', 'outbound'
+let _lastScreeningData = null; // { screening, memo, reasoning_log, profile }
+
+function showSourcing(){
+  goPanel('sourcing');
+  if(!_foundersCache) loadFounders();
+}
+
+function showThesis(){
+  goPanel('thesis');
+}
+
+function toggleSource(btn){
+  if(_sourceFilter === null){ _sourceFilter='inbound'; btn.textContent='Inbound only'; btn.setAttribute('aria-pressed','true');}
+  else if(_sourceFilter==='inbound'){ _sourceFilter='outbound'; btn.textContent='Outbound only'; }
+  else { _sourceFilter=null; btn.textContent='All sources'; btn.setAttribute('aria-pressed','false'); }
+  renderFounderList(_foundersCache);
+}
+
+async function loadFounders(){
+  const el = document.getElementById('sourcing-results');
+  el.innerHTML = `<div style="padding:8px;font-size:12px;color:var(--muted)">Loading founders…</div>`;
+  try {
+    const data = await fetchJSON('/api/founders');
+    _foundersCache = data;
+    renderFounderList(data);
+  } catch(e) {
+    setErr('sourcing-results', e.message);
+  }
+}
+
+function renderFounderList(founders){
+  if(!founders){ return; }
+  const el = document.getElementById('sourcing-results');
+  const list = _sourceFilter ? founders.filter(f=>f.source===_sourceFilter) : founders;
+  if(!list.length){
+    el.innerHTML=`<div class="ok-box">No founders match the current filter.</div>`;
+    return;
+  }
+  el.innerHTML = `<div class="founder-list">${list.map(f=>{
+    const srcChip = f.source==='outbound'
+      ? `<span class="chip-outbound" aria-label="Source: outbound">outbound</span>`
+      : `<span class="chip-inbound" aria-label="Source: inbound">inbound</span>`;
+    return `<div class="founder-row" tabindex="0"
+        onkeydown="if(event.key==='Enter')runScreening(${f.founder_id})"
+        aria-label="${esc(f.name)} — ${esc(f.company)}. Click to screen.">
+      <div class="founder-row-info">
+        <div class="founder-row-name">${esc(f.name)}</div>
+        <div class="founder-row-co">${esc(f.company)}</div>
+        <div class="founder-row-meta">${esc(f.sector||'')} · ${esc(f.stage||'unknown stage')} &nbsp;${srcChip}</div>
+      </div>
+      <div class="founder-row-action">
+        <button class="btn" onclick="runScreening(${f.founder_id})"
+          aria-label="Screen ${esc(f.name)}">Screen →</button>
+      </div>
+    </div>`;
+  }).join('')}</div>`;
+}
+
+/* ════════════════════════════════════════════
+   VC BRAIN — SCREENING
+════════════════════════════════════════════ */
+async function runScreening(idx){
+  goPanel('screening');
+  const nameEl = document.getElementById('screening-founder-name');
+  nameEl.textContent = 'Screening…';
+  setLoad('screening-results');
+  try {
+    const data = await fetchJSON(`/api/screen/${idx}`, {method:'POST'});
+    _lastScreeningData = data;
+    nameEl.textContent = `${data.profile.name} — ${data.profile.company}`;
+    renderScreening(data);
+    // Pre-populate memo panel
+    document.getElementById('memo-founder-badge').textContent =
+      `${data.profile.name} · ${data.profile.company}`;
+    renderMemo(data);
+  } catch(e) {
+    setErr('screening-results', e.message);
+  }
+}
+
+function _trendArrow(trend){
+  if(trend==='improving') return '<span aria-label="improving" style="color:var(--green)">▲ improving</span>';
+  if(trend==='declining') return '<span aria-label="declining" style="color:var(--red)">▼ declining</span>';
+  return '<span aria-label="stable" style="color:var(--muted)">→ stable</span>';
+}
+
+function renderScreening(data){
+  const s = data.screening;
+  const p = data.profile;
+  const srcChip = p.source==='outbound'
+    ? `<span class="chip-outbound">outbound</span>`
+    : `<span class="chip-inbound">inbound</span>`;
+  const thesisColor = s.thesis_match ? 'var(--green)' : 'var(--red)';
+  const thesisLabel = s.thesis_match ? '✓ Thesis PASS' : '✗ Thesis FAIL';
+
+  // Axis cards — 3 axes, NEVER combined
+  const axes = [s.founder_axis, s.market_axis, s.idea_vs_market_axis];
+  const axisHtml = axes.map(ax=>{
+    const ev = (ax.evidence||[]).slice(0,3).map(e=>`<div>· ${esc(e)}</div>`).join('');
+    return `<div class="axis-card">
+      <div class="axis-card-name">${esc(ax.name.replace(/_/g,' '))}</div>
+      <div class="axis-card-score" aria-label="${esc(ax.name)} score: ${Math.round(ax.score)} out of 100">
+        ${Math.round(ax.score)}<span style="font-size:14px;color:var(--muted)">/100</span>
+      </div>
+      <div class="axis-card-trend">${_trendArrow(ax.trend)}</div>
+      <div class="axis-card-ev" aria-label="Evidence">${ev||'<span style="color:var(--dim)">No signals available</span>'}</div>
+    </div>`;
+  }).join('');
+
+  // Risk flags
+  const flagHtml = (s.risk_flags||[]).length
+    ? (s.risk_flags||[]).map(rf=>{
+        const rc=sC(rf.severity);
+        return `<div class="agent-row">
+          <div class="agent-main">
+            <span class="agent-name">${esc(rf.category)}</span>
+            <span class="agent-badge" style="background:${rc}18;color:${rc};border-color:${rc}35">
+              ${esc(rf.severity)}
+            </span>
+          </div>
+          <div style="font-size:10px;color:var(--dim);margin-top:4px">${esc(rf.description||'')}</div>
+        </div>`;
+      }).join('')
+    : `<div style="font-size:11px;color:var(--dim)">No risk flags raised.</div>`;
+
+  // Reasoning panel
+  const steps = (data.reasoning_log.steps||[]);
+  const stepHtml = steps.map(st=>`
+    <div class="reasoning-step">
+      <div class="step-num" aria-hidden="true">${st.step_number}</div>
+      <div class="step-body">
+        <div class="step-agent">${esc(st.agent)}</div>
+        <div class="step-conclusion">${esc(st.conclusion)}</div>
+        <div class="step-dp">${esc(st.data_point)}</div>
+        <div class="step-conf">confidence: ${Math.round(st.confidence*100)}%</div>
+      </div>
+    </div>`).join('');
+
+  document.getElementById('screening-results').innerHTML = `
+    <div style="margin-bottom:10px;display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      ${srcChip}
+      <span style="font-size:11px;color:var(--tx)">${esc(p.sector||'')} · ${esc(p.stage||'unknown stage')}</span>
+      <span style="font-size:11px;font-weight:700;color:${thesisColor}" aria-label="Thesis match result: ${thesisLabel}">${thesisLabel}</span>
+    </div>
+    <p style="font-size:10px;color:var(--dim);margin-bottom:12px">${esc(s.thesis_reason||'')}</p>
+
+    <div class="sec-title" style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin-bottom:8px">
+      Three Axes (never combined)
+    </div>
+    <div class="axis-grid">${axisHtml}</div>
+
+    <div class="sec-title" style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:12px 0 8px">
+      Risk Flags
+    </div>
+    ${flagHtml}
+
+    <button class="btn" onclick="goPanel('memo')" style="margin-top:14px"
+      aria-label="View investment memo for this founder">View Memo →</button>
+
+    <details class="reasoning-panel" style="margin-top:14px">
+      <summary aria-label="Show or hide reasoning chain for this screening result">
+        Show reasoning (${steps.length} step${steps.length===1?'':'s'})
+      </summary>
+      <div class="reasoning-steps" role="list" aria-label="Reasoning steps">
+        ${stepHtml||'<div style="font-size:11px;color:var(--dim);padding:8px 0">No reasoning steps available.</div>'}
+      </div>
+    </details>`;
+}
+
+/* ════════════════════════════════════════════
+   VC BRAIN — MEMO
+════════════════════════════════════════════ */
+function renderMemoFromStored(){
+  if(_lastScreeningData) renderMemo(_lastScreeningData);
+}
+
+function _badgeHtml(status){
+  if(status==='verified')
+    return `<span class="badge-verified" aria-label="Claim verified">✓ verified</span>`;
+  if(status==='contradicted')
+    return `<span class="badge-contradicted" aria-label="Claim contradicted">✗ contradicted</span>`;
+  return `<span class="badge-unverifiable" aria-label="Claim unverifiable">? unverifiable</span>`;
+}
+
+function _renderMemoSection(sec){
+  if(!sec) return '';
+  if(!sec.is_available){
+    return `<div class="memo-section">
+      <div class="memo-section-hd">${esc(sec.title)}</div>
+      <div style="display:flex;align-items:center;gap:8px">
+        <span class="badge-unverifiable" aria-label="${esc(sec.title)} not disclosed">not disclosed</span>
+        <span style="font-size:10px;color:var(--dim)">${esc(sec.unavailability_reason||'data absent from profile')}</span>
+      </div>
+    </div>`;
+  }
+  // Format content: replace ** with bold, preserve line breaks
+  const formatted = esc(sec.content||'')
+    .replace(/\*\*(.+?)\*\*/g,'<strong>$1</strong>')
+    .replace(/\n/g,'<br>');
+
+  // Claims for this section
+  const claims = (sec.claims||[]).filter(vc=>vc.claim&&vc.claim.claim_text&&vc.claim.claim_text!=='not disclosed');
+  const claimsHtml = claims.length ? `
+    <div style="margin-top:8px;border-top:1px solid var(--b1);padding-top:8px">
+      ${claims.map(vc=>`
+        <div class="claim-row">
+          <div class="claim-text" style="font-size:11px">${esc(vc.claim.claim_text)}</div>
+          <div class="claim-badge-wrap">${_badgeHtml(vc.status||'unverifiable')}</div>
+        </div>
+        ${vc.status==='contradicted'&&vc.contradiction_note?`<div style="font-size:10px;color:var(--red);padding:2px 0 4px 0">⚠ ${esc(vc.contradiction_note)}</div>`:''}
+      `).join('')}
+    </div>` : '';
+
+  return `<div class="memo-section">
+    <div class="memo-section-hd">${esc(sec.title)}</div>
+    <div class="memo-body">${formatted}</div>
+    ${claimsHtml}
+  </div>`;
+}
+
+function renderMemo(data){
+  const m = data.memo;
+  if(!m || (!m.required_sections && !m.optional_sections)){
+    setErr('memo-results','Memo data missing or malformed.');
+    return;
+  }
+
+  const trustPct = Math.round((m.overall_trust_score||0)*100);
+  const trustColor = trustPct>=70?'var(--green)':trustPct>=40?'var(--amber)':'var(--red)';
+
+  // Collect all unique claims across all sections for summary at bottom
+  const seen = new Set();
+  const allClaims = [];
+  for(const sec of [...(m.required_sections||[]), ...(m.optional_sections||[])]) {
+    for(const vc of (sec.claims||[])) {
+      const key = (vc.claim?.claim_text||'').slice(0,60);
+      if(!seen.has(key) && vc.claim?.claim_text && vc.claim.claim_text!=='not disclosed') {
+        seen.add(key); allClaims.push(vc);
+      }
+    }
+  }
+
+  const verifiedCount    = allClaims.filter(c=>c.status==='verified').length;
+  const contradictedCount= allClaims.filter(c=>c.status==='contradicted').length;
+  const unverifiableCount= allClaims.filter(c=>c.status==='unverifiable').length;
+
+  const statLine = `
+    <div style="display:flex;gap:10px;flex-wrap:wrap;align-items:center;margin-bottom:14px;padding:10px 12px;background:var(--s2);border-radius:8px;border:1px solid var(--b1)">
+      <span style="font-size:11px;font-weight:700;color:${trustColor}">Trust Score: ${trustPct}%</span>
+      <span style="color:var(--dim);font-size:11px">·</span>
+      <span class="badge-verified">${verifiedCount} verified</span>
+      <span class="badge-contradicted">${contradictedCount} contradicted</span>
+      <span class="badge-unverifiable">${unverifiableCount} unverifiable</span>
+    </div>`;
+
+  const reqHtml = (m.required_sections||[]).map(_renderMemoSection).join('');
+  const optHtml = (m.optional_sections||[]).map(_renderMemoSection).join('');
+
+  document.getElementById('memo-results').innerHTML = statLine + reqHtml +
+    (optHtml ? `<div class="sec-title" style="font-size:9px;font-weight:700;color:var(--muted);text-transform:uppercase;letter-spacing:.07em;margin:18px 0 10px">Additional Sections</div>${optHtml}` : '');
+}
+
+/* ════════════════════════════════════════════
+   VC BRAIN — THESIS CONFIG
+════════════════════════════════════════════ */
+async function loadThesis(){
+  const statusEl = document.getElementById('thesis-status');
+  if(!statusEl) return;
+  try {
+    const cfg = await fetchJSON('/api/thesis');
+    document.getElementById('th-sectors').value = (cfg.sectors||[]).join(', ');
+    document.getElementById('th-stages').value  = (cfg.stages||[]).join(', ');
+    document.getElementById('th-geos').value    = (cfg.geographies||[]).join(', ');
+    document.getElementById('th-risk').value    = cfg.risk_appetite||'medium';
+    document.getElementById('th-min').value     = cfg.check_size_min||'';
+    document.getElementById('th-max').value     = cfg.check_size_max||'';
+    document.getElementById('th-own').value     = cfg.min_ownership_pct||'';
+    if(statusEl) statusEl.textContent = 'Thesis loaded.';
+  } catch(e) {
+    if(statusEl) statusEl.textContent = 'Using defaults.';
+  }
+}
+
+function _splitList(s){ return s.split(',').map(x=>x.trim()).filter(Boolean); }
+
+async function submitThesis(e){
+  e.preventDefault();
+  const statusEl = document.getElementById('thesis-status');
+  statusEl.textContent = 'Saving…';
+  const body = {
+    sectors:       _splitList(document.getElementById('th-sectors').value),
+    stages:        _splitList(document.getElementById('th-stages').value),
+    geographies:   _splitList(document.getElementById('th-geos').value),
+    risk_appetite: document.getElementById('th-risk').value,
+    check_size_min: Number(document.getElementById('th-min').value)||0,
+    check_size_max: Number(document.getElementById('th-max').value)||10000000,
+    min_ownership_pct: Number(document.getElementById('th-own').value)||0,
+  };
+  try {
+    await fetchJSON('/api/thesis', {
+      method:'POST', headers:{'Content-Type':'application/json'}, body:JSON.stringify(body)
+    });
+    statusEl.textContent = '✓ Saved';
+    setTimeout(()=>{ statusEl.textContent=''; }, 3000);
+  } catch(e2) {
+    statusEl.textContent = '⚠ ' + e2.message;
+  }
 }
 
 /* ════════════════════════════════════════════
